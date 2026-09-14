@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MODERATOR
+  CUSTOMER
+  RIDER
+}
+
+enum ParcelStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentGateway {
+  BKASH
+  STRIPE
+  SSLCOMMERZ
+}
+
+enum OtpType {
+  EMAIL_VERIFICATION
+  FORGOT_PASSWORD
+  DELIVERY_OTP
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  phone         String
+  password      String
+  role          Role           @default(CUSTOMER)
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  riderProfile  RiderProfile?
+  sentParcels   Parcel[]       @relation("CustomerParcels")
+  assignedParcels Parcel[]     @relation("RiderParcels")
+  otps          Otp[]
+}
+
+model RiderProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleType      String   // Bike, Cycle, etc.
+  vehicleNumber    String
+  licenseNumber    String
+  currentLatitude  Float?
+  currentLongitude Float?
+  isAvailable      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Parcel {
+  id              String        @id @default(uuid())
+  trackingId      String        @unique
+  senderId        String
+  sender          User          @relation("CustomerParcels", fields: [senderId], references: [id])
+  receiverName    String
+  receiverPhone   String
+  pickupAddress   String
+  deliveryAddress String
+  weight          Float
+  category        String
+  parcelImage     String?
+  status          ParcelStatus  @default(PENDING)
+  riderId         String?
+  rider           User?         @relation("RiderParcels", fields: [riderId], references: [id])
+  deliveryOtp     String?
+  deletedAt       DateTime?     // Soft Delete
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  payment         Payment?
+  trackingLogs    TrackingLog[]
+}
+
+model Payment {
+  id            String         @id @default(uuid())
+  parcelId      String         @unique
+  parcel        Parcel         @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  transactionId String         @unique
+  gateway       PaymentGateway
+  amount        Float
+  status        PaymentStatus  @default(PENDING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpCode   String
+  type      OtpType
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model TrackingLog {
+  id        String   @id @default(uuid())
+  parcelId  String
+  parcel    Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  status    String
+  note      String
+  createdAt DateTime @default(now())
+}
