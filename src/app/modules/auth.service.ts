@@ -8,8 +8,8 @@ interface RegisterPayload {
   email: string;
   phone: string;
   password: string;
-  role?: Role; // CUSTOMER বা RIDER হতে পারে
-  vehicleType?: string; // রাইডার হলে লাগবে
+  role?: Role;
+  vehicleType?: string; 
   vehicleNumber?: string;
   licenseNumber?: string;
 }
@@ -58,6 +58,51 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
   return userWithoutPassword;
 };
 
+const loginUserFromDB = async (payload: LoginPayload) => {
+  const { email, password } = payload;
+
+  // ১. ইউজার ডাটাবেজে আছে কিনা চেক করা
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new Error('User not found! Please register first.');
+  }
+
+  // ২. পাসওয়ার্ড ম্যাচ করছে কিনা চেক করা
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordMatched) {
+    throw new Error('Invalid email or password!');
+  }
+
+  // ৩. JWT টোকেন জেনারেট করা (7 দিন মেয়াদ)
+  const jwt = require('jsonwebtoken');
+  const tokenPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  };
+
+  const accessToken = jwt.sign(
+    tokenPayload,
+    process.env.JWT_SECRET || 'default_secret_key',
+    { expiresIn: '7d' }
+  );
+
+  // পাসওয়ার্ড বাদ দিয়ে ইউজারের বাকি ইনফো রিটার্ন করা
+  const { password: _, ...userWithoutPassword } = user;
+
+  return {
+    accessToken,
+    user: userWithoutPassword,
+  };
+};
+
+
+
 export const AuthServices = {
   registerUserIntoDB,
+  loginUserFromDB,
 };

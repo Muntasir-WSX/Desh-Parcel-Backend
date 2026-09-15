@@ -24,6 +24,34 @@ const registerUser = async (req: Request, res: Response) => {
   }
 };
 
+const loginUser = async (req: Request, res: Response) => {
+  try {
+    const result = await AuthServices.loginUserFromDB(req.body);
+
+    res.status(200).json({
+      success: true,
+      
+      
+      message: "Login successful!",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(401).json({
+      success: false,
+      message: error.message || "Authentication failed",
+      errors: [
+        {
+          path: "",
+          message: error.message,
+        },
+      ],
+    });
+  }
+};
+
+
+
 export const AuthControllers = {
   registerUser,
+  loginUser,
 };
