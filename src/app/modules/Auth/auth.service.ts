@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -9,9 +10,14 @@ interface RegisterPayload {
   phone: string;
   password: string;
   role?: Role;
-  vehicleType?: string; 
+  vehicleType?: string;
   vehicleNumber?: string;
   licenseNumber?: string;
+}
+
+interface LoginPayload {
+  email: string;
+  password: string;
 }
 
 const registerUserIntoDB = async (payload: RegisterPayload) => {
@@ -61,7 +67,7 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
 const loginUserFromDB = async (payload: LoginPayload) => {
   const { email, password } = payload;
 
-  // ১. ইউজার ডাটাবেজে আছে কিনা চেক করা
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -70,15 +76,14 @@ const loginUserFromDB = async (payload: LoginPayload) => {
     throw new Error('User not found! Please register first.');
   }
 
-  // ২. পাসওয়ার্ড ম্যাচ করছে কিনা চেক করা
+
   const isPasswordMatched = await bcrypt.compare(password, user.password);
 
   if (!isPasswordMatched) {
     throw new Error('Invalid email or password!');
   }
 
-  // ৩. JWT টোকেন জেনারেট করা (7 দিন মেয়াদ)
-  const jwt = require('jsonwebtoken');
+ 
   const tokenPayload = {
     id: user.id,
     email: user.email,
@@ -90,8 +95,6 @@ const loginUserFromDB = async (payload: LoginPayload) => {
     process.env.JWT_SECRET || 'default_secret_key',
     { expiresIn: '7d' }
   );
-
-  // পাসওয়ার্ড বাদ দিয়ে ইউজারের বাকি ইনফো রিটার্ন করা
   const { password: _, ...userWithoutPassword } = user;
 
   return {
