@@ -2,15 +2,15 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { getOtpEmailTemplate } from '../../utils/emailTemplate';
+import redisClient from '../../config/redis'; 
 
 const prisma = new PrismaClient();
-
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS, 
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -38,31 +38,26 @@ const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('User with this email does not exist!');
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // ৬ ডিজিটের ওটিপি
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // ১০ মিনিট মেয়াদ
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); 
+  
 
- 
-  await prisma.otp.create({
-    data: {
-      userId: user.id,
-      otpCode,
-      type: 'FORGOT_PASSWORD',
-      expiresAt,
-    },
+  await redisClient.set(`otp:${email}`, otpCode, {
+    EX: 300,
   });
 
+  const ttlSeconds = await redisClient.ttl(`otp:${email}`);
+  console.log(`⏱️ Redis OTP Cache Timing: ${ttlSeconds} seconds remaining for ${email}`);
  
   await transporter.sendMail({
-   from: `"DeshParcel Security" <${process.env.EMAIL_USER}>`,
+    from: `"DeshParcel Security" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: '🔒 Password Reset OTP - DeshParcel',
-    html: getOtpEmailTemplate(user.name, otpCode), 
+    html: getOtpEmailTemplate(user.name, otpCode),
   });
 
-    return { message: 'OTP sent to your email. Please check your inbox.' };
-
-  
+  return { message: 'OTP sent to your email. Please check your inbox.' };
 };
+
 
 const resetPassword = async (payload: { email: string; otp: string; newPassword: string }) => {
   const { email, otp, newPassword } = payload;
@@ -70,20 +65,15 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('User not found!');
 
-  const validOtp = await prisma.otp.findFirst({
-    where: {
-      userId: user.id,
-      otpCode: otp,
-      type: 'FORGOT_PASSWORD',
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const storedOtp = await redisClient.get(`otp:${email}`);
 
-  if (!validOtp || validOtp.expiresAt < new Date()) {
+
+  if (!storedOtp || storedOtp !== otp) {
     throw new Error('Invalid or expired OTP!');
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
+
 
   await prisma.user.update({
     where: { id: user.id },
@@ -91,7 +81,7 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
   });
 
  
-  await prisma.otp.delete({ where: { id: validOtp.id } });
+  await redisClient.del(`otp:${email}`);
 
   return { message: 'Password reset successfully!' };
 };
