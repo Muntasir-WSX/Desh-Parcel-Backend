@@ -24,18 +24,9 @@ enum ParcelStatus {
   CANCELLED
 }
 
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
 
-enum PaymentGateway {
-  BKASH
-  STRIPE
-  SSLCOMMERZ
-}
+
+
 
 enum OtpType {
   EMAIL_VERIFICATION
@@ -99,16 +90,30 @@ model Parcel {
 }
 
 model Payment {
-  id            String         @id @default(uuid())
-  parcelId      String         @unique
-  parcel        Parcel         @relation(fields: [parcelId], references: [id], onDelete: Cascade)
-  transactionId String         @unique
-  gateway       PaymentGateway
+  id            String        @id @default(uuid())
+  parcelId      String        @unique
+  parcel        Parcel        @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  transactionId String?       @unique
   amount        Float
-  status        PaymentStatus  @default(PENDING)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  gateway       PaymentGateway 
+  status        PaymentStatus  @default(PENDING) 
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
+
+enum PaymentGateway {
+  BKASH
+  SSLCOMMERZ
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+
 
 model Otp {
   id        String   @id @default(uuid())
