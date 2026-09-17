@@ -1,9 +1,26 @@
 import { PrismaClient, ParcelStatus } from '@prisma/client';
+import { cloudinaryUpload } from '../../config/cloudinary';
 
 const prisma = new PrismaClient();
 
+const createParcelIntoDB = async (userId: string, payload: any, file?: Express.Multer.File) => {
+  let parcelImage = null;
 
-const createParcelIntoDB = async (userId: string, payload: any) => {
+ 
+  if (file) {
+    const uploadResult: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinaryUpload.uploader.upload_stream(
+        { folder: 'desh-parcel/parcels' },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(file.buffer);
+    });
+    parcelImage = uploadResult.secure_url;
+  }
+
   const trackingId = `CR-${Math.floor(100000 + Math.random() * 900000)}`;
 
   const parcel = await prisma.parcel.create({
@@ -14,13 +31,12 @@ const createParcelIntoDB = async (userId: string, payload: any) => {
       receiverPhone: payload.receiverPhone,
       pickupAddress: payload.pickupAddress,
       deliveryAddress: payload.deliveryAddress,
-      weight: payload.weight,
+      weight: parseFloat(payload.weight),
       category: payload.category,
-      parcelImage: payload.parcelImage || null,
+      parcelImage,
       status: ParcelStatus.PENDING,
     },
   });
-
 
   await prisma.trackingLog.create({
     data: {
@@ -32,7 +48,6 @@ const createParcelIntoDB = async (userId: string, payload: any) => {
 
   return parcel;
 };
-
 
 const getAllParcelsFromDB = async (query: any) => {
   const { page = 1, limit = 10, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
@@ -80,8 +95,7 @@ const getParcelByIdFromDB = async (id: string) => {
   return parcel;
 };
 
-
-const updateParcelInDB = async (id: string, payload: any) => {
+const updateParcelInDB = async (id: string, payload: any, file?: Express.Multer.File) => {
   const parcel = await prisma.parcel.findUnique({ where: { id, deletedAt: null } });
   if (!parcel) throw new Error('Parcel not found!');
 
@@ -89,16 +103,36 @@ const updateParcelInDB = async (id: string, payload: any) => {
     throw new Error('Can not update parcel once it is processed or picked up!');
   }
 
+  let parcelImage = parcel.parcelImage;
+
+  // যদি আপডেট করার সময় নতুন ছবি দেওয়া হয়
+  if (file) {
+    const uploadResult: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinaryUpload.uploader.upload_stream(
+        { folder: 'desh-parcel/parcels' },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(file.buffer);
+    });
+    parcelImage = uploadResult.secure_url;
+  }
+
   const updatedParcel = await prisma.parcel.update({
     where: { id },
-    data: payload,
+    data: {
+      ...payload,
+      weight: payload.weight ? parseFloat(payload.weight) : undefined,
+      parcelImage,
+    },
   });
 
   return updatedParcel;
 };
 
-
-const softDeleteParcelFromDB = async (id: string) => {
+const DeleteParcelFromDB = async (id: string) => {
   const parcel = await prisma.parcel.findUnique({ where: { id, deletedAt: null } });
   if (!parcel) throw new Error('Parcel not found!');
 
@@ -115,5 +149,5 @@ export const ParcelServices = {
   getAllParcelsFromDB,
   getParcelByIdFromDB,
   updateParcelInDB,
-  softDeleteParcelFromDB,
+  DeleteParcelFromDB,
 };
