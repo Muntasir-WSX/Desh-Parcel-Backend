@@ -38,6 +38,11 @@ const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('User with this email does not exist!');
 
+  const cooldown = await redisClient.get(`cooldown:${email}`);
+  if (cooldown) {
+    throw new Error('Please wait 90 seconds before requesting a new OTP.');
+  }
+
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); 
   
 
@@ -46,12 +51,12 @@ const forgotPassword = async (email: string) => {
   });
 
   const ttlSeconds = await redisClient.ttl(`otp:${email}`);
-  console.log(`⏱️ Redis OTP Cache Timing: ${ttlSeconds} seconds remaining for ${email}`);
+  console.log(` Redis OTP Cache Timing: ${ttlSeconds} seconds remaining for ${email}`);
  
   await transporter.sendMail({
     from: `"DeshParcel Security" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: '🔒 Password Reset OTP - DeshParcel',
+    subject: ' Password Reset OTP - DeshParcel',
     html: getOtpEmailTemplate(user.name, otpCode),
   });
 

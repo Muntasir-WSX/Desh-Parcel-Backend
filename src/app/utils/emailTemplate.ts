@@ -7,45 +7,46 @@ export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
       <style>
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #09090b; /* Deep Dark Background */
+          background-color: #f4f6f9; /* Clean Light Background */
           margin: 0;
           padding: 0;
         }
         .email-container {
           max-width: 600px;
           margin: 30px auto;
-          background: #121212; /* Rich Black Card Background */
+          background: #ffffff; /* White Card Background */
           border-radius: 10px;
           overflow: hidden;
-          box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15);
-          border: 1px solid #27272a;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
         }
         .header {
-          background: linear-gradient(135deg, #dc2626, #991b1b); /* Premium Red Gradient */
-          color: #ffffff;
+          background: #ffffff;
+          color: #1e293b;
           text-align: center;
           padding: 25px 20px;
+          border-bottom: 1px solid #e2e8f0;
         }
         .header h1 {
           margin: 0;
           font-size: 24px;
           font-weight: 700;
           letter-spacing: 0.5px;
-          color: #ffffff;
+          color: #2563eb; /* Professional Blue */
         }
         .body-content {
           padding: 35px 30px;
-          color: #e4e4e7; /* Light Gray Text for Readability on Dark */
+          color: #334155; /* Dark Slate Text for Readability */
           line-height: 1.6;
         }
         .body-content h2 {
-          color: #ffffff;
+          color: #0f172a;
           font-size: 20px;
           margin-top: 0;
         }
         .otp-box {
-          background: #18181b; /* Darker box inside */
-          border: 2px dashed #dc2626; /* Red Dashed Border */
+          background: #f8fafc; /* Light Blue-Gray box inside */
+          border: 2px dashed #3b82f6; /* Blue Dashed Border */
           border-radius: 8px;
           text-align: center;
           padding: 20px;
@@ -54,25 +55,25 @@ export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
         .otp-code {
           font-size: 36px;
           font-weight: 800;
-          color: #ef4444; /* Bright Red OTP Code */
+          color: #2563eb; /* Royal Blue OTP Code */
           letter-spacing: 6px;
           margin: 0;
         }
         .footer {
-          background: #09090b;
+          background: #f8fafc;
           text-align: center;
           padding: 15px;
           font-size: 12px;
-          color: #71717a;
-          border-top: 1px solid #27272a;
+          color: #64748b;
+          border-top: 1px solid #e2e8f0;
         }
       </style>
     </head>
     <body>
       <div class="email-container">
-        <!-- Header with Red & Black Branding -->
+        <!-- Header with White & Blue Theme -->
         <div class="header">
-          <h1>📦 DeshParcel & Logistics</h1>
+          <h1>DeshParcel & Logistics</h1>
         </div>
         
         <!-- Body -->
@@ -84,11 +85,11 @@ export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
             <p class="otp-code">${otpCode}</p>
           </div>
           
-          <p>This OTP is valid for <strong style="color: #ef4444;">10 minutes</strong>. Please do not share this code with anyone for security reasons.</p>
+          <p>This OTP is valid for <strong style="color: #2563eb;">90 seconds</strong>. Please do not share this code with anyone for security reasons.</p>
           <p>If you didn't request a password reset, you can safely ignore this email.</p>
           
           <p style="margin-top: 35px; margin-bottom: 0;">Best regards,</p>
-          <p style="margin-top: 5px; font-weight: 600; color: #ef4444;">The DeshParcel Team</p>
+          <p style="margin-top: 5px; font-weight: 600; color: #2563eb;">The DeshParcel Team</p>
         </div>
         
         <!-- Footer -->
