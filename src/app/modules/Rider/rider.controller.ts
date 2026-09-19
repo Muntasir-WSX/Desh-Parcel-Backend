@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { RiderServices } from './rider.service';
+import sendResponse from '../../utils/sendResponse';
 
 const getMyAssignedParcels = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -24,6 +25,28 @@ const getSingleAssignedParcel = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
+
+const getRiderProfileAndEarnings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const riderId = req.user?.id;
+    const result = await RiderServices.getRiderProfileAndEarningsFromDB(riderId!);
+    sendResponse(res, { success: true, statusCode: 200, message: 'Rider profile & earnings fetched', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+const requestCashout = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const riderId = req.user?.id;
+    const { amount, bkashNo } = req.body;
+    const result = await RiderServices.requestCashoutByRiderFromDB(riderId!, amount, bkashNo);
+    sendResponse(res, { success: true, statusCode: 200, message: 'Cashout request submitted successfully via bKash', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
 const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const riderId = req.user?.id;
@@ -42,8 +65,12 @@ const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Pro
   }
 };
 
+
+
 export const RiderControllers = {
   getMyAssignedParcels,
   getSingleAssignedParcel,
+  getRiderProfileAndEarnings,
+  requestCashout,
   updateParcelStatus,
 };

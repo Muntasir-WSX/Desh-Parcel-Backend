@@ -29,11 +29,13 @@ const auth = (...requiredRoles: string[]) => {
         });
         return;
       }
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET is not defined in environment variables!');
+      }
 
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || 'default_secret_key'
-      ) as JwtPayload;
+     
+      const decoded = jwt.verify(token, secret) as JwtPayload;
 
       req.user = decoded;
 

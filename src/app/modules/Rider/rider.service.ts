@@ -86,8 +86,120 @@ const updateParcelStatusByRiderFromDB = async (
   return result;
 };
 
+const getRiderDashboardStatsFromDB = async (riderId: string) => {
+  const totalAssigned = await prisma.parcel.count({ where: { riderId, deletedAt: null } });
+  const totalDelivered = await prisma.parcel.count({ where: { riderId, status: 'DELIVERED', deletedAt: null } });
+  const totalPendingPickup = await prisma.parcel.count({ where: { riderId, status: 'ASSIGNED', deletedAt: null } });
+
+  return {
+    totalAssigned,
+    totalDelivered,
+    totalPendingPickup,
+  };
+};
+
+
+const getRiderProfileAndEarningsFromDB = async (riderId: string) => {
+  const rider = await prisma.user.findUnique({
+    where: { id: riderId },
+    include: { riderProfile: true },
+  });
+
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const dailyDeliveredCount = await prisma.parcel.count({
+    where: {
+      riderId,
+      status: 'DELIVERED',
+      updatedAt: { gte: todayStart },
+    },
+  });
+
+  const dailyCancelledCount = await prisma.parcel.count({
+    where: {
+      riderId,
+      status: 'CANCELLED',
+      updatedAt: { gte: todayStart },
+    },
+  });
+
+  const dailyPendingCount = await prisma.parcel.count({
+    where: {
+      riderId,
+      status: { in: ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+    },
+  });
+
+
+  
+  const deliveryCommission = 20; 
+  const dailyIncome = dailyDeliveredCount * deliveryCommission;
+
+  return {
+    riderDetails: {
+      name: rider?.name,
+      email: rider?.email,
+      phone: rider?.phone,
+      balance: rider?.riderProfile?.totalBalance || 0,
+    },
+    dailyStats: {
+      dailyDelivered: dailyDeliveredCount,
+      dailyCancelled: dailyCancelledCount,
+      dailyPending: dailyPendingCount,
+      dailyIncome,
+    },
+  };
+};
+
+
+const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkashNo: string) => {
+  if (amount < 100) {
+    throw new Error('Minimum cashout amount is 100 BDT!');
+  }
+
+  const profile = await prisma.riderProfile.findUnique({ where: { userId: riderId } });
+  if (!profile || profile.totalBalance < amount) {
+    throw new Error('Insufficient balance in your wallet!');
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    
+    await tx.riderProfile.update({
+      where: { userId: riderId },
+      data: {
+        totalBalance: { decrement: amount },
+        withdrawn: { increment: amount },
+      },
+    });
+
+   
+    const withdrawal = await tx.withdrawalRequest.create({
+      data: {
+        riderId,
+        amount,
+        bkashNo,
+        status: 'PENDING',
+      },
+    });
+
+    return withdrawal;
+  });
+
+  return result;
+};
+
 export const RiderServices = {
   getRiderAssignedParcelsFromDB,
   getParcelByIdForRiderFromDB,
   updateParcelStatusByRiderFromDB,
+  getRiderDashboardStatsFromDB,
+  getRiderProfileAndEarningsFromDB,
+  requestCashoutByRiderFromDB,
+  
+  
 };
+
+
+// will add if riders own profile+his daily income+his daily parcels+his daily delivered parcels+his daily pending parcels+his daily cancelled parcels+his daily in transit parcels+his daily out for delivery parcels+his daily assigned parcels

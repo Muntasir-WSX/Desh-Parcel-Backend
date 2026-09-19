@@ -48,6 +48,7 @@ model User {
   sentParcels   Parcel[]       @relation("CustomerParcels")
   assignedParcels Parcel[]     @relation("RiderParcels")
   otps          Otp[]
+  withdrawalRequests  WithdrawalRequest[]  @relation("RiderWithdrawals")
 }
 
 model RiderProfile {
@@ -57,12 +58,26 @@ model RiderProfile {
   vehicleType      String   // Bike, Cycle, etc.
   vehicleNumber    String
   licenseNumber    String
+  nidNumber        String
+  totalBalance     Float
+  withdrawn        Float
   currentLatitude  Float?
   currentLongitude Float?
   isAvailable      Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+model WithdrawalRequest {
+  id        String           @id @default(uuid())
+  riderId   String
+  rider     User             @relation("RiderWithdrawals", fields: [riderId], references: [id], onDelete: Cascade)
+  amount    Float
+  bkashNo   String
+  status    WithdrawalStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+}
+
 
 model Parcel {
   id              String        @id @default(uuid())
@@ -80,7 +95,7 @@ model Parcel {
   riderId         String?
   rider           User?         @relation("RiderParcels", fields: [riderId], references: [id])
   deliveryOtp     String?
-  deletedAt       DateTime?     // Soft Delete
+  deletedAt       DateTime?     
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -132,3 +147,10 @@ model TrackingLog {
   note      String
   createdAt DateTime @default(now())
 }
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+

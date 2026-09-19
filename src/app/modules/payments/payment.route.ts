@@ -13,5 +13,6 @@ router.post('/ssl/initiate', auth('CUSTOMER', 'ADMIN'), PaymentControllers.initi
 router.get('/ssl/success', PaymentControllers.sslSuccess);
 router.post('/ssl/fail', PaymentControllers.sslFail);
 router.post('/ssl/cancel', PaymentControllers.sslCancel);
+router.get('/:parcelId', auth('CUSTOMER', 'ADMIN', 'RIDER'), PaymentControllers.getPaymentStatusByParcelId);
 
 export const PaymentRoutes = router;

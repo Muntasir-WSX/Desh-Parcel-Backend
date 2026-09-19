@@ -77,8 +77,73 @@ const getAdminDashboardStatsFromDB = async () => {
   };
 };
 
+const getAllUsersFromDB = async (page: number, limit: number) => {
+  const skip = (page - 1) * limit;
+  const users = await prisma.user.findMany({
+    skip,
+    take: limit,
+    select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true },
+  });
+  const total = await prisma.user.count();
+  return {
+    meta: { page, limit, total },
+    result: users,
+  };
+};
+
+const getAllParcelsForAdminFromDB = async () => {
+  return await prisma.parcel.findMany({
+    where: { deletedAt: null },
+    include: { sender: true, rider: true, payment: true },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+const deleteParcelByAdminIntoDB = async (parcelId: string, reason?: string) => {
+  const parcel = await prisma.parcel.findUnique({
+    where: { id: parcelId, deletedAt: null },
+  });
+
+  if (!parcel) {
+    throw new Error('Parcel not found or already deleted!');
+  }
+
+  
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedParcel = await tx.parcel.update({
+      where: { id: parcelId },
+      data: {
+        deletedAt: new Date(),
+        status: 'CANCELLED',
+      },
+    });
+
+    await tx.trackingLog.create({
+      data: {
+        parcelId,
+        status: 'CANCELLED',
+        note: reason 
+          ? `Parcel rejected and deleted by admin. Reason: ${reason}` 
+          : 'Parcel rejected by admin due to description/image mismatch.',
+      },
+    });
+
+    return updatedParcel;
+  });
+
+  return result;
+};
+
+
+
 export const AdminServices = {
   updateUserRoleIntoDB,
   assignParcelToRiderIntoDB,
   getAdminDashboardStatsFromDB,
+  getAllUsersFromDB,
+  getAllParcelsForAdminFromDB,
+  deleteParcelByAdminIntoDB,
 };
+
+
+// delete parcel will add

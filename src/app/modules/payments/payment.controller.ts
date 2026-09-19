@@ -3,6 +3,7 @@ import { BkashServices } from './bkash.service';
 import { SslServices } from './ssl.service';
 import { PrismaClient, PaymentStatus } from '@prisma/client';
 import { AuthenticatedRequest } from '../../middlewares/auth';
+import sendResponse from '../../utils/sendResponse';
 
 const prisma = new PrismaClient();
 
@@ -22,8 +23,10 @@ const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): P
 
 const bkashCallback = async (req: Request, res: Response): Promise<void> => {
   try {
-    
-    const { paymentID, status, parcelId } = req.query as any;
+    const query = req.query as any;
+    const paymentID = Array.isArray(query.paymentID) ? query.paymentID[0] : query.paymentID;
+    const status = Array.isArray(query.status) ? query.status[0] : query.status;
+    const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
 
     if (status === 'success' || status === 'completed') {
       await BkashServices.executeBkashPayment(paymentID as string, parcelId as string);
@@ -60,7 +63,9 @@ const initiateSslPayment = async (req: AuthenticatedRequest, res: Response): Pro
 
 const sslSuccess = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { parcelId, tran_id } = req.query as any;
+    const query = req.query as any;
+    const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+    const tran_id = Array.isArray(query.tran_id) ? query.tran_id[0] : query.tran_id;
 
     await prisma.payment.update({
       where: { parcelId: parcelId as string },
@@ -75,7 +80,9 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
 };
 
 const sslFail = async (req: Request, res: Response): Promise<void> => {
-  const { parcelId } = req.query as any;
+  const query = req.query as any;
+  const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+
   await prisma.payment.update({
     where: { parcelId: parcelId as string },
     data: { status: PaymentStatus.FAILED },
@@ -84,7 +91,9 @@ const sslFail = async (req: Request, res: Response): Promise<void> => {
 };
 
 const sslCancel = async (req: Request, res: Response): Promise<void> => {
-  const { parcelId } = req.query as any;
+  const query = req.query as any;
+  const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+
   await prisma.payment.update({
     where: { parcelId: parcelId as string },
     data: { status: PaymentStatus.CANCELLED },
@@ -93,6 +102,24 @@ const sslCancel = async (req: Request, res: Response): Promise<void> => {
 };
 
 
+const getPaymentStatusByParcelId = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Ekhane parcelId string kina ba array kina ta safely handle kora holo
+    const parcelId = Array.isArray(req.params.parcelId) ? req.params.parcelId[0] : req.params.parcelId;
+    
+    const payment = await prisma.payment.findUnique({ where: { parcelId: parcelId as string } });
+    
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: 'Payment status fetched successfully',
+      data: payment || { status: 'UNPAID' },
+    });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
 export const PaymentControllers = {
   initiateBkashPayment,
   bkashCallback,
@@ -100,4 +127,5 @@ export const PaymentControllers = {
   sslSuccess,
   sslFail,
   sslCancel,
+  getPaymentStatusByParcelId,
 };

@@ -44,6 +44,7 @@ app.use('/api/v1/parcels', ParcelRoutes);
 app.use('/api/v1/admin', AdminRoutes);
 app.use('/api/v1/rider',RiderRoutes);
 app.use('/api/v1/payments', PaymentRoutes
+
 );
 
 app.use((req: Request, res: Response) => {
