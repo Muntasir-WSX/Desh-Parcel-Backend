@@ -15,7 +15,8 @@ const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): P
     const result = await BkashServices.createBkashPayment(parcelId, amount, callbackUrl);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    const message = error instanceof Error ? error.message : 'Payment verification failed';
+    res.status(400).json({ success: false, message });
   }
 };
 
@@ -67,8 +68,9 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
     });
 
     res.redirect('http://localhost:3000/payment/success');
-  } catch (error: any) {
-    res.status(400).json({ success: extraError(error) || error.message });
+  } 
+  catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 

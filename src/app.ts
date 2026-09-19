@@ -5,6 +5,9 @@ import rateLimit from 'express-rate-limit';
 import { AuthRoutes } from './app/modules/Auth/auth.route';
 import { UserRoutes } from './app/modules/User/user.route';
 import { ParcelRoutes } from './app/modules/Percel/percel.route';
+import { AdminRoutes } from './app/modules/Admin/admin.route';
+import { RiderRoutes } from './app/modules/Rider/rider.route';
+import { PaymentRoutes } from './app/modules/payments/payment.route';
 
 const app: Application = express();
 
@@ -38,6 +41,10 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/v1/auth', AuthRoutes);
 app.use('/api/v1/users', UserRoutes);
 app.use('/api/v1/parcels', ParcelRoutes);
+app.use('/api/v1/admin', AdminRoutes);
+app.use('/api/v1/rider',RiderRoutes);
+app.use('/api/v1/payments', PaymentRoutes
+);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({
