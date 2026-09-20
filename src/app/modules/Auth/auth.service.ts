@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,7 @@ interface RegisterPayload {
   vehicleType?: string;
   vehicleNumber?: string;
   licenseNumber?: string;
+  nidNumber?: string;
 }
 
 interface LoginPayload {
@@ -21,7 +23,22 @@ interface LoginPayload {
 }
 
 const registerUserIntoDB = async (payload: RegisterPayload) => {
-  const { name, email, phone, password, role = 'CUSTOMER', vehicleType, vehicleNumber, licenseNumber } = payload;
+  const {
+    name,
+    email,
+    phone,
+    password,
+    role = 'CUSTOMER',
+    vehicleType,
+    vehicleNumber,
+    licenseNumber,
+    nidNumber,
+  } = payload;
+
+  if (!['CUSTOMER', 'RIDER'].includes(role) || email.toLowerCase() === PROTECTED_ADMIN_EMAIL) {
+    throw new Error('Only customer or rider accounts can be created through public registration.');
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -43,8 +60,8 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
 
     
     if (role === 'RIDER') {
-      if (!vehicleType || !vehicleNumber || !licenseNumber) {
-        throw new Error('Vehicle details are required for rider registration!');
+      if (!vehicleType || !vehicleNumber || !licenseNumber || !nidNumber) {
+        throw new Error('Vehicle and NID details are required for rider registration!');
       }
 
       await tx.riderProfile.create({
@@ -53,6 +70,9 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
           vehicleType,
           vehicleNumber,
           licenseNumber,
+          nidNumber,
+          totalBalance: 0,
+          withdrawn: 0,
         },
       });
     }
@@ -74,6 +94,14 @@ const loginUserFromDB = async (payload: LoginPayload) => {
 
   if (!user) {
     throw new Error('User not found! Please register first.');
+  }
+
+  if (user.isBanned) {
+    throw new Error('This account has been banned by an administrator.');
+  }
+
+  if (user.role === 'ADMIN' && user.email.toLowerCase() !== PROTECTED_ADMIN_EMAIL) {
+    throw new Error('This admin account is not authorized.');
   }
 
 

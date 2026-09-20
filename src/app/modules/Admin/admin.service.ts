@@ -1,11 +1,30 @@
 import { PrismaClient, ParcelStatus, Role } from '@prisma/client';
+import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
 
 const prisma = new PrismaClient();
 
+const APPROVED_PARCEL_STATUS = 'APPROVED' as ParcelStatus;
 
-const updateUserRoleIntoDB = async (userId: string, role: Role) => {
+
+const updateUserRoleIntoDB = async (userId: string, role: Role, actorRole: string) => {
+  if (actorRole !== Role.ADMIN) {
+    throw new Error('Only the admin can change user roles.');
+  }
+
+  if (role === Role.ADMIN) {
+    throw new Error('Another admin account cannot be created.');
+  }
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error('User not found!');
+
+  if (user.email.toLowerCase() === PROTECTED_ADMIN_EMAIL) {
+    throw new Error('The protected admin account cannot be changed.');
+  }
+
+  if (role === Role.MODERATOR && user.role !== Role.CUSTOMER) {
+    throw new Error('Only customer accounts can be promoted to moderator.');
+  }
 
   const updatedUser = await prisma.user.update({
     where: { id: userId },
@@ -23,8 +42,17 @@ const assignParcelToRiderIntoDB = async (parcelId: string, riderId: string) => {
   if (!parcel) throw new Error('Parcel not found!');
 
 
-  const rider = await prisma.user.findUnique({ where: { id: riderId, role: Role.RIDER } });
-  if (!rider) throw new Error('Valid rider not found!');
+  const rider = await prisma.user.findUnique({
+    where: { id: riderId, role: Role.RIDER },
+    include: { riderProfile: true },
+  });
+  if (!rider || !rider.riderProfile?.isApproved || !rider.riderProfile.isAvailable) {
+    throw new Error('Rider is not approved or available!');
+  }
+
+  if (parcel.status !== APPROVED_PARCEL_STATUS) {
+    throw new Error('Only approved parcels can be assigned to a rider!');
+  }
 
  
   const result = await prisma.$transaction(async (tx) => {
@@ -48,6 +76,63 @@ const assignParcelToRiderIntoDB = async (parcelId: string, riderId: string) => {
   });
 
   return result;
+};
+
+const approveParcelIntoDB = async (parcelId: string) => {
+  const parcel = await prisma.parcel.findUnique({
+    where: { id: parcelId, deletedAt: null },
+  });
+
+  if (!parcel) throw new Error('Parcel not found!');
+  if (parcel.status !== ParcelStatus.PENDING) {
+    throw new Error('Only pending parcels can be approved!');
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const updatedParcel = await tx.parcel.update({
+      where: { id: parcelId },
+      data: { status: APPROVED_PARCEL_STATUS },
+    });
+
+    await tx.trackingLog.create({
+      data: {
+        parcelId,
+        status: APPROVED_PARCEL_STATUS,
+        note: 'Parcel approved by admin or moderator',
+      },
+    });
+
+    return updatedParcel;
+  });
+};
+
+const approveRiderIntoDB = async (riderId: string) => {
+  const rider = await prisma.user.findUnique({
+    where: { id: riderId, role: Role.RIDER },
+    include: { riderProfile: true },
+  });
+
+  if (!rider || !rider.riderProfile) throw new Error('Rider not found!');
+
+  return await prisma.riderProfile.update({
+    where: { userId: riderId },
+    data: { isApproved: true },
+  });
+};
+
+const banUserIntoDB = async (userId: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error('User not found!');
+
+  if (user.role === Role.ADMIN || user.email.toLowerCase() === PROTECTED_ADMIN_EMAIL) {
+    throw new Error('The protected admin account cannot be banned.');
+  }
+
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { isBanned: true },
+    select: { id: true, name: true, email: true, role: true, isBanned: true },
+  });
 };
 
 
@@ -138,6 +223,9 @@ const deleteParcelByAdminIntoDB = async (parcelId: string, reason?: string) => {
 
 export const AdminServices = {
   updateUserRoleIntoDB,
+  approveParcelIntoDB,
+  approveRiderIntoDB,
+  banUserIntoDB,
   assignParcelToRiderIntoDB,
   getAdminDashboardStatsFromDB,
   getAllUsersFromDB,

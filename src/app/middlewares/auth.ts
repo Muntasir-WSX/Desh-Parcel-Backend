@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+import { PROTECTED_ADMIN_EMAIL } from '../config/admin';
+
+const prisma = new PrismaClient();
 
 export interface AuthenticatedRequest extends Request {
   user?: JwtPayload | { id: string; email: string; role: string };
@@ -37,9 +41,46 @@ const auth = (...requiredRoles: string[]) => {
      
       const decoded = jwt.verify(token, secret) as JwtPayload;
 
-      req.user = decoded;
+      if (!decoded.id) {
+        res.status(401).json({
+          success: false,
+          message: 'Invalid token payload.',
+        });
+        return;
+      }
 
-      if (requiredRoles.length && !requiredRoles.includes(String(decoded.role))) {
+      const user = await prisma.user.findUnique({
+        where: { id: String(decoded.id) },
+        include: { riderProfile: true },
+      });
+
+      if (
+        !user ||
+        user.isBanned ||
+        (user.role === 'ADMIN' && user.email.toLowerCase() !== PROTECTED_ADMIN_EMAIL)
+      ) {
+        res.status(401).json({
+          success: false,
+          message: 'Your account is not allowed to access this resource.',
+        });
+        return;
+      }
+
+      if (user.role === 'RIDER' && !user.riderProfile?.isApproved) {
+        res.status(403).json({
+          success: false,
+          message: 'Your rider account is waiting for admin approval.',
+        });
+        return;
+      }
+
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+
+      if (requiredRoles.length && !requiredRoles.includes(user.role)) {
         res.status(403).json({
           success: false,
           message: 'Forbidden! You do not have permission to access this resource.',

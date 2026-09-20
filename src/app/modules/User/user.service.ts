@@ -33,6 +33,33 @@ const getUserProfileFromDB = async (userId: string) => {
   return user;
 };
 
+const updateMyProfileIntoDB = async (
+  userId: string,
+  payload: { name?: string; phone?: string; email?: string }
+) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error('User not found!');
+
+  return await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: payload.name,
+      phone: payload.phone,
+      email: payload.email?.toLowerCase(),
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      isVerified: true,
+      createdAt: true,
+      riderProfile: true,
+    },
+  });
+};
+
 
 const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
@@ -48,6 +75,10 @@ const forgotPassword = async (email: string) => {
 
   await redisClient.set(`otp:${email}`, otpCode, {
     EX: 300,
+  });
+
+  await redisClient.set(`cooldown:${email}`, '1', {
+    EX: 90,
   });
 
   const ttlSeconds = await redisClient.ttl(`otp:${email}`);
@@ -93,6 +124,7 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
 
 export const UserServices = {
   getUserProfileFromDB,
+  updateMyProfileIntoDB,
   forgotPassword,
   resetPassword,
 };

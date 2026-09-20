@@ -8,19 +8,52 @@ const updateUserRole = async (req: AuthenticatedRequest, res: Response): Promise
     const { id } = req.params;
     const { role } = req.body;
 
-    const result = await AdminServices.updateUserRoleIntoDB(id as string, role);
+    const result = await AdminServices.updateUserRoleIntoDB(
+      id as string,
+      role,
+      String(req.user?.role)
+    );
     res.status(200).json({ success: true, message: 'User role updated successfully', data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 const assignParcelToRider = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { parcelId, riderId } = req.body;
 
     const result = await AdminServices.assignParcelToRiderIntoDB(parcelId, riderId);
     res.status(200).json({ success: true, message: 'Parcel assigned to rider successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const approveParcel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const parcelId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.approveParcelIntoDB(parcelId as string);
+    res.status(200).json({ success: true, message: 'Parcel approved successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const approveRider = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const riderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.approveRiderIntoDB(riderId as string);
+    res.status(200).json({ success: true, message: 'Rider approved successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const banUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.banUserIntoDB(userId as string);
+    res.status(200).json({ success: true, message: 'User banned successfully', data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -88,6 +121,9 @@ const deleteParcelByAdmin = async (req: AuthenticatedRequest, res: Response): Pr
 export const AdminControllers = {
   updateUserRole,
   assignParcelToRider,
+  approveParcel,
+  approveRider,
+  banUser,
   getDashboardStats,
   getAllUsers,
   getAllParcelsForAdmin,

@@ -49,11 +49,15 @@ const createParcelIntoDB = async (userId: string, payload: any, file?: Express.M
   return parcel;
 };
 
-const getAllParcelsFromDB = async (query: any) => {
+const getAllParcelsFromDB = async (query: any, userId: string, role: string) => {
   const { page = 1, limit = 10, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
   const skip = (Number(page) - 1) * Number(limit);
 
   const andConditions: any[] = [{ deletedAt: null }];
+
+  if (role === 'CUSTOMER') {
+    andConditions.push({ senderId: userId });
+  }
 
   if (status) {
     andConditions.push({ status });
@@ -85,19 +89,29 @@ const getAllParcelsFromDB = async (query: any) => {
   };
 };
 
-const getParcelByIdFromDB = async (id: string) => {
+const getParcelByIdFromDB = async (id: string, userId: string, role: string) => {
   const parcel = await prisma.parcel.findUnique({
     where: { id, deletedAt: null },
     include: { sender: true, rider: true, trackingLogs: true, payment: true },
   });
 
-  if (!parcel) throw new Error('Parcel not found!');
+  if (!parcel || (role === 'CUSTOMER' && parcel.senderId !== userId)) {
+    throw new Error('Parcel not found!');
+  }
   return parcel;
 };
 
-const updateParcelInDB = async (id: string, payload: any, file?: Express.Multer.File) => {
+const updateParcelInDB = async (
+  id: string,
+  userId: string,
+  role: string,
+  payload: any,
+  file?: Express.Multer.File
+) => {
   const parcel = await prisma.parcel.findUnique({ where: { id, deletedAt: null } });
-  if (!parcel) throw new Error('Parcel not found!');
+  if (!parcel || (role === 'CUSTOMER' && parcel.senderId !== userId)) {
+    throw new Error('Parcel not found!');
+  }
 
   if (parcel.status !== ParcelStatus.PENDING) {
     throw new Error('Can not update parcel once it is processed or picked up!');
@@ -132,9 +146,11 @@ const updateParcelInDB = async (id: string, payload: any, file?: Express.Multer.
   return updatedParcel;
 };
 
-const DeleteParcelFromDB = async (id: string) => {
+const DeleteParcelFromDB = async (id: string, userId: string, role: string) => {
   const parcel = await prisma.parcel.findUnique({ where: { id, deletedAt: null } });
-  if (!parcel) throw new Error('Parcel not found!');
+  if (!parcel || (role === 'CUSTOMER' && parcel.senderId !== userId)) {
+    throw new Error('Parcel not found!');
+  }
 
   const deletedParcel = await prisma.parcel.update({
     where: { id },

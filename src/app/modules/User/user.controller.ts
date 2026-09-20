@@ -12,6 +12,16 @@ const getMyProfile = async (req: AuthenticatedRequest, res: Response): Promise<v
   }
 };
 
+const updateMyProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const result = await UserServices.updateMyProfileIntoDB(userId!, req.body);
+    res.status(200).json({ success: true, message: 'Profile updated successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const handleForgotPassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
@@ -33,6 +43,7 @@ const handleResetPassword = async (req: AuthenticatedRequest, res: Response): Pr
 
 export const UserControllers = {
   getMyProfile,
+  updateMyProfile,
   handleForgotPassword,
   handleResetPassword,
 };
