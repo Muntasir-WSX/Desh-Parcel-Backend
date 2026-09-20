@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { RiderServices } from './rider.service';
+import { ParcelServices } from '../Percel/percel.service';
 import sendResponse from '../../utils/sendResponse';
 
 const getMyAssignedParcels = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -47,6 +48,21 @@ const requestCashout = async (req: AuthenticatedRequest, res: Response): Promise
   }
 };
 
+const verifyDeliveryOtp = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const riderId = req.user?.id;
+    const parcelId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await ParcelServices.verifyAndDeliverParcel(
+      riderId!,
+      parcelId as string,
+      req.body.otp
+    );
+    res.status(200).json({ success: true, message: 'Parcel delivered successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const riderId = req.user?.id;
@@ -67,10 +83,22 @@ const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Pro
 
 
 
+
+const getRiderEarningsReport = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await RiderServices.getRiderEarningsReportFromDB(req.user?.id!);
+    sendResponse(res, { success: true, statusCode: 200, message: 'Rider earnings report fetched', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
 export const RiderControllers = {
   getMyAssignedParcels,
   getSingleAssignedParcel,
   getRiderProfileAndEarnings,
   requestCashout,
+  verifyDeliveryOtp,
   updateParcelStatus,
+  getRiderEarningsReport,
 };

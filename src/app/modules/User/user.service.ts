@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { getOtpEmailTemplate } from '../../utils/emailTemplate';
 import redisClient from '../../config/redis'; 
+import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
 
 const prisma = new PrismaClient();
 
@@ -39,6 +40,10 @@ const updateMyProfileIntoDB = async (
 ) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error('User not found!');
+
+  if (payload.email?.toLowerCase() === PROTECTED_ADMIN_EMAIL && user.email.toLowerCase() !== PROTECTED_ADMIN_EMAIL) {
+    throw new Error('This email address is reserved for the protected admin account.');
+  }
 
   return await prisma.user.update({
     where: { id: userId },
@@ -122,9 +127,44 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
   return { message: 'Password reset successfully!' };
 };
 
+
+
+
+
+const getUserParcelsFromDB = async (customerId: string) => {
+  const parcels = await prisma.parcel.findMany({
+    where: { senderId: customerId, deletedAt: null },
+    include: {
+      payment: true,
+      rider: { select: { name: true, phone: true } },
+      trackingLogs: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  return parcels;
+};
+
+
+const getUserPaymentHistoryFromDB = async (customerId: string) => {
+  const payments = await prisma.payment.findMany({
+    where: {
+      parcel: { senderId: customerId },
+    },
+    include: {
+      parcel: { select: { trackingId: true, category: true, deliveryAddress: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  return payments;
+};
+
+
+
 export const UserServices = {
   getUserProfileFromDB,
   updateMyProfileIntoDB,
   forgotPassword,
   resetPassword,
+   getUserParcelsFromDB,
+  getUserPaymentHistoryFromDB,
 };

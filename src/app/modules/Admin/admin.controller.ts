@@ -59,6 +59,17 @@ const banUser = async (req: AuthenticatedRequest, res: Response): Promise<void> 
   }
 };
 
+  const updateParcelHubStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const parcelId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const { currentHub, note } = req.body;
+      const result = await AdminServices.updateParcelHubStatusIntoDB(parcelId as string, currentHub, note);
+      res.status(200).json({ success: true, message: 'Parcel hub status updated successfully', data: result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  };
+
 const getDashboardStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const result = await AdminServices.getAdminDashboardStatsFromDB();
@@ -118,14 +129,39 @@ const deleteParcelByAdmin = async (req: AuthenticatedRequest, res: Response): Pr
   }
 };
 
+
+const getWithdrawalRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await AdminServices.getAllWithdrawalRequestsFromDB();
+    sendResponse(res, { success: true, statusCode: 200, message: 'Withdrawal requests fetched successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+const handleWithdrawalStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const requestId = req.params.id;
+    const { status } = req.body;
+    const result = await AdminServices.updateWithdrawalStatusByAdminFromDB(requestId as string, status);
+    sendResponse(res, { success: true, statusCode: 200, message: `Withdrawal request ${status.toLowerCase()} successfully`, data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+
 export const AdminControllers = {
   updateUserRole,
   assignParcelToRider,
   approveParcel,
   approveRider,
   banUser,
+    updateParcelHubStatus,
   getDashboardStats,
   getAllUsers,
   getAllParcelsForAdmin,
   deleteParcelByAdmin,
+  getWithdrawalRequests,
+  handleWithdrawalStatus,
 };

@@ -66,6 +66,16 @@ const initSslPayment = async (parcelId: string, amount: number, user: { name: st
   }
 };
 
+const validateSslPayment = async (valId: string) => {
+  if (!valId) {
+    throw new Error('SSLCommerz validation ID is missing.');
+  }
+
+  const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+  return await sslcz.validate({ val_id: valId });
+};
+
 export const SslServices = {
   initSslPayment,
+  validateSslPayment,
 };

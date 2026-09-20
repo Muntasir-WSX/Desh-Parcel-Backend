@@ -1,12 +1,27 @@
 import { PrismaClient, ParcelStatus } from '@prisma/client';
 import { cloudinaryUpload } from '../../config/cloudinary';
+import { calculateParcelDeliveryFee } from '../../utils/calculatePrice';
+import { sendEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
-const createParcelIntoDB = async (userId: string, payload: any, file?: Express.Multer.File) => {
-  let parcelImage = null;
 
- 
+
+const createParcelIntoDB = async (
+  userId: string,
+  payload: any,
+  file?: Express.Multer.File
+) => {
+  const { receiverName, receiverPhone, pickupAddress, deliveryAddress, weight, category } = payload;
+  const normalizedWeight = Number(weight);
+
+  if (!Number.isFinite(normalizedWeight) || normalizedWeight <= 0) {
+    throw new Error('Parcel weight must be a positive number.');
+  }
+
+  const trackingId = 'DP-' + Math.floor(100000 + Math.random() * 900000);
+  let parcelImage = payload.parcelImage;
+
   if (file) {
     const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinaryUpload.uploader.upload_stream(
@@ -18,36 +33,74 @@ const createParcelIntoDB = async (userId: string, payload: any, file?: Express.M
       );
       uploadStream.end(file.buffer);
     });
+
     parcelImage = uploadResult.secure_url;
   }
 
-  const trackingId = `CR-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  const parcel = await prisma.parcel.create({
-    data: {
-      trackingId,
-      senderId: userId,
-      receiverName: payload.receiverName,
-      receiverPhone: payload.receiverPhone,
-      pickupAddress: payload.pickupAddress,
-      deliveryAddress: payload.deliveryAddress,
-      weight: parseFloat(payload.weight),
-      category: payload.category,
-      parcelImage,
-      status: ParcelStatus.PENDING,
-    },
+  const deliveryFee = calculateParcelDeliveryFee(pickupAddress, deliveryAddress, normalizedWeight);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const newParcel = await tx.parcel.create({
+      data: {
+        trackingId,
+        senderId: userId,
+        receiverName,
+        receiverPhone,
+        pickupAddress,
+        deliveryAddress,
+        weight: normalizedWeight,
+        category,
+        parcelImage,
+        status: 'PENDING', // অ্যাডমিন অ্যাপ্রুভালের পূর্বে পেন্ড থাকবে
+      },
+    });
+
+
+    await tx.payment.create({
+      data: {
+        parcelId: newParcel.id,
+        amount: deliveryFee,
+        gateway: 'BKASH',
+        status: 'PENDING',
+      },
+    });
+
+
+    await tx.trackingLog.create({
+      data: {
+        parcelId: newParcel.id,
+        status: 'PENDING',
+        note: 'Parcel created successfully and waiting for payment & admin approval.',
+      },
+    });
+
+    return { ...newParcel, calculatedDeliveryFee: deliveryFee };
   });
 
-  await prisma.trackingLog.create({
-    data: {
-      parcelId: parcel.id,
-      status: 'PENDING',
-      note: 'Parcel booked successfully',
-    },
+  const sender = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true },
   });
 
-  return parcel;
-};
+  if (sender) {
+    const trackingUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${result.trackingId}`;
+    try {
+      await sendEmail(
+        sender.email,
+        'Your parcel is pending - DeshParcel',
+        `<h3>Hello ${sender.name},</h3>
+         <p>Your parcel with tracking ID <b>${result.trackingId}</b> has been created.</p>
+         <p>It is currently pending admin approval. Delivery fee: <b>${deliveryFee} BDT</b>.</p>
+         <p>Track your parcel: <a href="${trackingUrl}">${trackingUrl}</a></p>`
+      );
+    } catch (error) {
+      console.error('Pending parcel email could not be sent:', error);
+    }
+  }
+
+  return result;
+    };
 
 const getAllParcelsFromDB = async (query: any, userId: string, role: string) => {
   const { page = 1, limit = 10, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
@@ -137,13 +190,38 @@ const updateParcelInDB = async (
   const updatedParcel = await prisma.parcel.update({
     where: { id },
     data: {
-      ...payload,
+      receiverName: payload.receiverName,
+      receiverPhone: payload.receiverPhone,
+      pickupAddress: payload.pickupAddress,
+      deliveryAddress: payload.deliveryAddress,
+      category: payload.category,
       weight: payload.weight ? parseFloat(payload.weight) : undefined,
       parcelImage,
     },
   });
-
   return updatedParcel;
+};
+
+const getParcelTrackingByTrackingIdFromDB = async (trackingId: string) => {
+  const parcel = await prisma.parcel.findUnique({
+    where: { trackingId, deletedAt: null },
+    select: {
+      trackingId: true,
+      status: true,
+      receiverName: true,
+      pickupAddress: true,
+      deliveryAddress: true,
+      createdAt: true,
+      updatedAt: true,
+      trackingLogs: {
+        select: { status: true, note: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+  });
+
+  if (!parcel) throw new Error('Tracking ID not found!');
+  return parcel;
 };
 
 const DeleteParcelFromDB = async (id: string, userId: string, role: string) => {
@@ -160,10 +238,68 @@ const DeleteParcelFromDB = async (id: string, userId: string, role: string) => {
   return deletedParcel;
 };
 
+
+const generateDeliveryOtp = async (parcelId: string) => {
+  const otpCode = Math.floor(1000 + Math.random() * 9000).toString(); // ৪ ডিজিটের ওটিপি
+
+  await prisma.parcel.update({
+    where: { id: parcelId },
+    data: { deliveryOtp: otpCode },
+  });
+
+
+  return otpCode;
+};
+
+
+const verifyAndDeliverParcel = async (riderId: string, parcelId: string, otpInput: string) => {
+  const parcel = await prisma.parcel.findUnique({
+    where: { id: parcelId, riderId, deletedAt: null },
+  });
+
+  if (!parcel) throw new Error('Parcel not found or not assigned to you!');
+  if (parcel.deliveryOtp !== otpInput) {
+    throw new Error('Invalid Delivery OTP! Please check with the receiver.');
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+
+    const updatedParcel = await tx.parcel.update({
+      where: { id: parcelId },
+      data: { status: 'DELIVERED', deliveryOtp: null },
+    });
+
+
+    const commission = 20;
+    await tx.riderProfile.update({
+      where: { userId: riderId },
+      data: { totalBalance: { increment: commission } },
+    });
+
+
+    await tx.trackingLog.create({
+      data: {
+        parcelId,
+        status: 'DELIVERED',
+        note: 'Parcel successfully delivered and verified with OTP.',
+      },
+    });
+
+    return updatedParcel;
+  });
+
+  return result;
+};
+
+
+
 export const ParcelServices = {
   createParcelIntoDB,
   getAllParcelsFromDB,
   getParcelByIdFromDB,
+  getParcelTrackingByTrackingIdFromDB,
   updateParcelInDB,
   DeleteParcelFromDB,
+  generateDeliveryOtp,
+  verifyAndDeliverParcel,
 };

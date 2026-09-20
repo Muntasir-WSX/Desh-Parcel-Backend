@@ -1,5 +1,6 @@
-import { PrismaClient, ParcelStatus, Role } from '@prisma/client';
+import { PrismaClient, ParcelStatus, Role, WithdrawalStatus } from '@prisma/client';
 import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
+import { sendEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
@@ -88,7 +89,7 @@ const approveParcelIntoDB = async (parcelId: string) => {
     throw new Error('Only pending parcels can be approved!');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const updatedParcel = await prisma.$transaction(async (tx) => {
     const updatedParcel = await tx.parcel.update({
       where: { id: parcelId },
       data: { status: APPROVED_PARCEL_STATUS },
@@ -104,6 +105,27 @@ const approveParcelIntoDB = async (parcelId: string) => {
 
     return updatedParcel;
   });
+
+  const parcelWithSender = await prisma.parcel.findUnique({
+    where: { id: parcelId },
+    include: { sender: { select: { name: true, email: true } } },
+  });
+
+  if (parcelWithSender) {
+    try {
+      await sendEmail(
+        parcelWithSender.sender.email,
+        'Your parcel has been approved - DeshParcel',
+        `<h3>Hello ${parcelWithSender.sender.name},</h3>
+         <p>Your parcel with tracking ID <b>${parcelWithSender.trackingId}</b> has been approved.</p>
+         <p>We will assign a rider for pickup soon.</p>`
+      );
+    } catch (error) {
+      console.error('Parcel approval email could not be sent:', error);
+    }
+  }
+
+  return updatedParcel;
 };
 
 const approveRiderIntoDB = async (riderId: string) => {
@@ -220,6 +242,75 @@ const deleteParcelByAdminIntoDB = async (parcelId: string, reason?: string) => {
 };
 
 
+const updateParcelHubStatusIntoDB = async (parcelId: string, currentHub: string, note: string) => {
+  const parcel = await prisma.parcel.findUnique({ where: { id: parcelId, deletedAt: null } });
+  if (!parcel) throw new Error('Parcel not found!');
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedParcel = await tx.parcel.update({
+      where: { id: parcelId },
+      data: { status: 'IN_TRANSIT' },
+    });
+
+    await tx.trackingLog.create({
+      data: {
+        parcelId,
+        status: 'IN_TRANSIT',
+        note: `Parcel arrived at ${currentHub} Hub. ${note}`,
+      },
+    });
+
+    return updatedParcel;
+  });
+
+  return result;
+};
+
+const getAllWithdrawalRequestsFromDB = async () => {
+  return await prisma.withdrawalRequest.findMany({
+    include: {
+      rider: { select: { id: true, name: true, email: true, phone: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+const updateWithdrawalStatusByAdminFromDB = async (
+  requestId: string,
+  status: WithdrawalStatus
+) => {
+  const request = await prisma.withdrawalRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request) throw new Error('Withdrawal request not found!');
+  if (request.status !== WithdrawalStatus.PENDING) {
+    throw new Error('This withdrawal request has already been processed.');
+  }
+
+  if (status !== WithdrawalStatus.APPROVED && status !== WithdrawalStatus.REJECTED) {
+    throw new Error('Invalid withdrawal status.');
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const updatedRequest = await tx.withdrawalRequest.update({
+      where: { id: requestId },
+      data: { status },
+    });
+
+    if (status === WithdrawalStatus.REJECTED) {
+      await tx.riderProfile.update({
+        where: { userId: request.riderId },
+        data: {
+          totalBalance: { increment: request.amount },
+          withdrawn: { decrement: request.amount },
+        },
+      });
+    }
+
+    return updatedRequest;
+  });
+};
 
 export const AdminServices = {
   updateUserRoleIntoDB,
@@ -231,6 +322,9 @@ export const AdminServices = {
   getAllUsersFromDB,
   getAllParcelsForAdminFromDB,
   deleteParcelByAdminIntoDB,
+  updateParcelHubStatusIntoDB,
+  getAllWithdrawalRequestsFromDB,
+  updateWithdrawalStatusByAdminFromDB,
 };
 
 

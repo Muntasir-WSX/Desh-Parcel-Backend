@@ -74,6 +74,11 @@ const createBkashPayment = async (parcelId: string, amount: number, callbackUrl:
 
 
 const executeBkashPayment = async (paymentID: string, parcelId: string) => {
+  const payment = await prisma.payment.findUnique({ where: { parcelId } });
+  if (!payment || payment.gateway !== PaymentGateway.BKASH || payment.status !== PaymentStatus.PENDING) {
+    throw new Error('The bKash payment is not available for execution.');
+  }
+
   const idToken = await getBkashToken();
 
   const response = await axios.post(
@@ -92,6 +97,9 @@ const executeBkashPayment = async (paymentID: string, parcelId: string) => {
   const result = response.data;
 
   if (result && result.statusCode === '0000') {
+    if (Number(result.amount) !== payment.amount) {
+      throw new Error('The bKash payment amount could not be verified.');
+    }
   
     await prisma.payment.update({
       where: { parcelId },

@@ -2,6 +2,9 @@ import { PrismaClient, ParcelStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const AT_HUB_STATUS = 'AT_HUB' as ParcelStatus;
+const TRANSFER_TO_HUB_STATUS = 'TRANSFER_TO_HUB' as ParcelStatus;
+
 
 const getRiderAssignedParcelsFromDB = async (riderId: string) => {
   const parcels = await prisma.parcel.findMany({
@@ -44,32 +47,40 @@ const updateParcelStatusByRiderFromDB = async (
   status: ParcelStatus,
   note: string
 ) => {
- 
+
   const parcel = await prisma.parcel.findUnique({
     where: { id: parcelId, riderId, deletedAt: null },
   });
 
   if (!parcel) throw new Error('Parcel not found or not assigned to you!');
 
- 
-  const allowedStatuses: ParcelStatus[] = [
-    ParcelStatus.ASSIGNED,
-    ParcelStatus.PICKED_UP,
-    ParcelStatus.IN_TRANSIT,
-    ParcelStatus.OUT_FOR_DELIVERY,
-    ParcelStatus.DELIVERED,
-    ParcelStatus.CANCELLED,
-  ];
 
-  if (!allowedStatuses.includes(status)) {
-    throw new Error('Invalid status update for rider!');
+  const nextStatuses: Record<string, ParcelStatus[]> = {
+    ASSIGNED: [ParcelStatus.PICKED_UP, ParcelStatus.CANCELLED],
+    PICKED_UP: [AT_HUB_STATUS, ParcelStatus.CANCELLED],
+    AT_HUB: [TRANSFER_TO_HUB_STATUS, ParcelStatus.OUT_FOR_DELIVERY],
+    TRANSFER_TO_HUB: [ParcelStatus.IN_TRANSIT, ParcelStatus.CANCELLED],
+    IN_TRANSIT: [ParcelStatus.OUT_FOR_DELIVERY, AT_HUB_STATUS],
+    OUT_FOR_DELIVERY: [ParcelStatus.CANCELLED],
+  };
+
+  if (status === ParcelStatus.DELIVERED) {
+    throw new Error('Use the delivery OTP endpoint to complete delivery.');
+  }
+
+  if (!nextStatuses[parcel.status]?.includes(status)) {
+    throw new Error(`Parcel cannot move from ${parcel.status} to ${status}.`);
   }
 
 
   const result = await prisma.$transaction(async (tx) => {
+    const deliveryOtp = status === ParcelStatus.OUT_FOR_DELIVERY
+      ? Math.floor(1000 + Math.random() * 9000).toString()
+      : undefined;
+
     const updatedParcel = await tx.parcel.update({
       where: { id: parcelId },
-      data: { status },
+      data: { status, deliveryOtp },
     });
 
     await tx.trackingLog.create({
@@ -133,8 +144,8 @@ const getRiderProfileAndEarningsFromDB = async (riderId: string) => {
   });
 
 
-  
-  const deliveryCommission = 20; 
+
+  const deliveryCommission = 20;
   const dailyIncome = dailyDeliveredCount * deliveryCommission;
 
   return {
@@ -155,6 +166,12 @@ const getRiderProfileAndEarningsFromDB = async (riderId: string) => {
 
 
 const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkashNo: string) => {
+  amount = Number(amount);
+
+  if (!Number.isFinite(amount) || !bkashNo) {
+    throw new Error('A valid amount and bKash number are required.');
+  }
+
   if (amount < 100) {
     throw new Error('Minimum cashout amount is 100 BDT!');
   }
@@ -164,8 +181,16 @@ const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkas
     throw new Error('Insufficient balance in your wallet!');
   }
 
+  const pendingRequest = await prisma.withdrawalRequest.findFirst({
+    where: { riderId, status: 'PENDING' },
+  });
+
+  if (pendingRequest) {
+    throw new Error('You already have a pending withdrawal request.');
+  }
+
   const result = await prisma.$transaction(async (tx) => {
-    
+
     await tx.riderProfile.update({
       where: { userId: riderId },
       data: {
@@ -174,7 +199,7 @@ const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkas
       },
     });
 
-   
+
     const withdrawal = await tx.withdrawalRequest.create({
       data: {
         riderId,
@@ -190,6 +215,52 @@ const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkas
   return result;
 };
 
+const getRiderEarningsReportFromDB = async (riderId: string) => {
+  const now = new Date();
+
+
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+
+  const dailyDelivered = await prisma.parcel.count({
+    where: { riderId, status: 'DELIVERED', updatedAt: { gte: startOfDay } },
+  });
+
+  const weeklyDelivered = await prisma.parcel.count({
+    where: { riderId, status: 'DELIVERED', updatedAt: { gte: startOfWeek } },
+  });
+
+  const monthlyDelivered = await prisma.parcel.count({
+    where: { riderId, status: 'DELIVERED', updatedAt: { gte: startOfMonth } },
+  });
+
+
+  const commissionRate = 20;
+
+  return {
+    daily: {
+      deliveredCount: dailyDelivered,
+      income: dailyDelivered * commissionRate,
+    },
+    weekly: {
+      deliveredCount: weeklyDelivered,
+      income: weeklyDelivered * commissionRate,
+    },
+    monthly: {
+      deliveredCount: monthlyDelivered,
+      income: monthlyDelivered * commissionRate,
+    },
+  };
+};
+
 export const RiderServices = {
   getRiderAssignedParcelsFromDB,
   getParcelByIdForRiderFromDB,
@@ -197,8 +268,9 @@ export const RiderServices = {
   getRiderDashboardStatsFromDB,
   getRiderProfileAndEarningsFromDB,
   requestCashoutByRiderFromDB,
-  
-  
+  getRiderEarningsReportFromDB,
+
+
 };
 
 

@@ -4,7 +4,7 @@
     "target": "es2020",
     "module": "commonjs",
     "moduleResolution": "node",
-    "types": ["node"],
+    "types": ["node", "jest"],
     "lib": ["es2020"],
     "sourceMap": true,
     "declaration": true,

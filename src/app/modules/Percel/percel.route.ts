@@ -18,6 +18,7 @@ router.post(
 );
 
 router.get('/', auth('CUSTOMER', 'RIDER', 'ADMIN', 'MODERATOR'), ParcelControllers.getAllParcels);
+router.get('/tracking/:trackingId', ParcelControllers.getParcelTracking);
 router.get('/:id', auth('CUSTOMER', 'RIDER', 'ADMIN', 'MODERATOR'), ParcelControllers.getParcelById);
 router.patch('/:id', auth('CUSTOMER', 'ADMIN'), uploadParcelImage, ParcelControllers.updateParcel);
 router.delete('/:id', auth('CUSTOMER', 'ADMIN'), ParcelControllers.deleteParcel);

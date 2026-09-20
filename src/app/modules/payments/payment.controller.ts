@@ -8,12 +8,30 @@ import sendResponse from '../../utils/sendResponse';
 const prisma = new PrismaClient();
 
 // --- bKash Controllers ---
+const getParcelPaymentForUser = async (parcelId: string, userId: string, role: string) => {
+  const parcel = await prisma.parcel.findUnique({
+    where: { id: parcelId, deletedAt: null },
+    include: { payment: true },
+  });
+
+  if (!parcel || (role === 'CUSTOMER' && parcel.senderId !== userId)) {
+    throw new Error('Parcel not found!');
+  }
+
+  if (!parcel.payment) {
+    throw new Error('Payment has not been created for this parcel.');
+  }
+
+  return parcel;
+};
+
 const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { parcelId, amount } = req.body;
-    const callbackUrl = 'http://localhost:5000/api/v1/payments/bkash/callback';
+    const { parcelId } = req.body;
+    const parcel = await getParcelPaymentForUser(parcelId, req.user?.id!, String(req.user?.role));
+    const callbackUrl = `${process.env.API_URL || 'http://localhost:5000'}/api/v1/payments/bkash/callback?parcelId=${parcelId}`;
 
-    const result = await BkashServices.createBkashPayment(parcelId, amount, callbackUrl);
+    const result = await BkashServices.createBkashPayment(parcelId, parcel.payment!.amount, callbackUrl);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     const message = error instanceof Error ? error.message : 'Payment verification failed';
@@ -43,13 +61,14 @@ const bkashCallback = async (req: Request, res: Response): Promise<void> => {
 // --- SSLCommerz Controllers ---
 const initiateSslPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { parcelId, amount } = req.body;
+    const { parcelId } = req.body;
     const userId = req.user?.id;
+    const parcel = await getParcelPaymentForUser(parcelId, userId!, String(req.user?.role));
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new Error('User not found!');
 
-    const result = await SslServices.initSslPayment(parcelId, amount, {
+    const result = await SslServices.initSslPayment(parcelId, parcel.payment!.amount, {
       name: user.name,
       email: user.email,
       phone: user.phone,
@@ -66,6 +85,17 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
     const query = req.query as any;
     const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
     const tran_id = Array.isArray(query.tran_id) ? query.tran_id[0] : query.tran_id;
+    const val_id = Array.isArray(query.val_id) ? query.val_id[0] : query.val_id;
+
+    const payment = await prisma.payment.findUnique({ where: { parcelId: parcelId as string } });
+    if (!payment || payment.transactionId !== tran_id) {
+      throw new Error('Payment transaction could not be verified.');
+    }
+
+    const validation = await SslServices.validateSslPayment(val_id as string);
+    if (validation?.status !== 'VALID' && validation?.status !== 'VALIDATED') {
+      throw new Error('SSLCommerz payment validation failed.');
+    }
 
     await prisma.payment.update({
       where: { parcelId: parcelId as string },
@@ -102,12 +132,17 @@ const sslCancel = async (req: Request, res: Response): Promise<void> => {
 };
 
 
-const getPaymentStatusByParcelId = async (req: Request, res: Response): Promise<void> => {
+const getPaymentStatusByParcelId = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     // Ekhane parcelId string kina ba array kina ta safely handle kora holo
     const parcelId = Array.isArray(req.params.parcelId) ? req.params.parcelId[0] : req.params.parcelId;
     
-    const payment = await prisma.payment.findUnique({ where: { parcelId: parcelId as string } });
+    const parcel = await getParcelPaymentForUser(
+      parcelId as string,
+      req.user?.id!,
+      String(req.user?.role)
+    );
+    const payment = parcel.payment;
     
     sendResponse(res, {
       success: true,

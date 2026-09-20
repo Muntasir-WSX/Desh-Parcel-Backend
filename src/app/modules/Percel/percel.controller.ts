@@ -25,6 +25,18 @@ const getAllParcels = async (req: AuthenticatedRequest, res: Response): Promise<
   }
 };
 
+
+const getParcelTracking = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const trackingId = Array.isArray(req.params.trackingId)
+      ? req.params.trackingId[0]
+      : req.params.trackingId;
+    const result = await ParcelServices.getParcelTrackingByTrackingIdFromDB(trackingId);
+    res.status(200).json({ success: true, message: 'Parcel tracking fetched successfully', data: result });
+  } catch (error: any) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
 const getParcelById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parcelId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -73,6 +85,7 @@ export const ParcelControllers = {
   createParcel,
   getAllParcels,
   getParcelById,
+  getParcelTracking,
   updateParcel,
   deleteParcel,
 };

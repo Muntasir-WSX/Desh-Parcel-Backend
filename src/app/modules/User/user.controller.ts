@@ -22,6 +22,24 @@ const updateMyProfile = async (req: AuthenticatedRequest, res: Response): Promis
   }
 };
 
+const getMyParcels = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await UserServices.getUserParcelsFromDB(req.user?.id!);
+    res.status(200).json({ success: true, message: 'Your parcels fetched successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getMyPayments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await UserServices.getUserPaymentHistoryFromDB(req.user?.id!);
+    res.status(200).json({ success: true, message: 'Your payment history fetched successfully', data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const handleForgotPassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
@@ -46,4 +64,6 @@ export const UserControllers = {
   updateMyProfile,
   handleForgotPassword,
   handleResetPassword,
+  getMyParcels,
+  getMyPayments,
 };
