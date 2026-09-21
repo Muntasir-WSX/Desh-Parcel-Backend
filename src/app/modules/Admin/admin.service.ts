@@ -312,6 +312,35 @@ const updateWithdrawalStatusByAdminFromDB = async (
   });
 };
 
+const getAuditLogsFromDB = async (query: {
+  page?: string | number;
+  limit?: string | number;
+  action?: string;
+  resource?: string;
+  actorId?: string;
+}) => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 20;
+  const where = {
+    ...(query.action ? { action: query.action } : {}),
+    ...(query.resource ? { resource: query.resource } : {}),
+    ...(query.actorId ? { actorId: query.actorId } : {}),
+  };
+
+  const [logs, total] = await prisma.$transaction([
+    prisma.auditLog.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: { actor: { select: { id: true, name: true, email: true, role: true } } },
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+
+  return { meta: { page, limit, total }, data: logs };
+};
+
 export const AdminServices = {
   updateUserRoleIntoDB,
   approveParcelIntoDB,
@@ -325,6 +354,7 @@ export const AdminServices = {
   updateParcelHubStatusIntoDB,
   getAllWithdrawalRequestsFromDB,
   updateWithdrawalStatusByAdminFromDB,
+  getAuditLogsFromDB,
 };
 
 

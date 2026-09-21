@@ -4,6 +4,7 @@ import { SslServices } from './ssl.service';
 import { PrismaClient, PaymentStatus } from '@prisma/client';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import sendResponse from '../../utils/sendResponse';
+import { createAuditLog } from '../../utils/auditLog';
 
 const prisma = new PrismaClient();
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -33,6 +34,7 @@ const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): P
     const callbackUrl = `${process.env.API_URL || 'http://localhost:5000'}/api/v1/payments/bkash/callback?parcelId=${parcelId}`;
 
     const result = await BkashServices.createBkashPayment(parcelId, parcel.payment!.amount, callbackUrl);
+    void createAuditLog({ actorId: req.user?.id, action: 'PAYMENT_INITIATED', resource: 'PAYMENT', resourceId: parcel.payment!.id, details: { gateway: 'BKASH', parcelId } }).catch(console.error);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     const message = error instanceof Error ? error.message : 'Payment verification failed';
@@ -74,6 +76,7 @@ const initiateSslPayment = async (req: AuthenticatedRequest, res: Response): Pro
       email: user.email,
       phone: user.phone,
     });
+    void createAuditLog({ actorId: userId, action: 'PAYMENT_INITIATED', resource: 'PAYMENT', resourceId: parcel.payment!.id, details: { gateway: 'SSLCOMMERZ', parcelId } }).catch(console.error);
 
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
@@ -103,6 +106,7 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
       data: { status: PaymentStatus.SUCCESS, transactionId: tran_id as string },
     });
 
+    void createAuditLog({ action: 'PAYMENT_SUCCEEDED', resource: 'PAYMENT', resourceId: payment.id, details: { gateway: 'SSLCOMMERZ', parcelId } }).catch(console.error);
     res.redirect(`${frontendUrl}/payment/success`);
   } 
   catch (error: any) {
@@ -115,6 +119,7 @@ const sslFail = async (req: Request, res: Response): Promise<void> => {
     const query = req.query as any;
     const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
     await SslServices.updateSslPaymentStatus(parcelId as string, PaymentStatus.FAILED);
+    void createAuditLog({ action: 'PAYMENT_FAILED', resource: 'PAYMENT', resourceId: parcelId, details: { gateway: 'SSLCOMMERZ' } }).catch(console.error);
     res.redirect(`${frontendUrl}/payment/failed`);
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -126,6 +131,7 @@ const sslCancel = async (req: Request, res: Response): Promise<void> => {
     const query = req.query as any;
     const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
     await SslServices.updateSslPaymentStatus(parcelId as string, PaymentStatus.CANCELLED);
+    void createAuditLog({ action: 'PAYMENT_CANCELLED', resource: 'PAYMENT', resourceId: parcelId, details: { gateway: 'SSLCOMMERZ' } }).catch(console.error);
     res.redirect(`${frontendUrl}/payment/cancel`);
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -158,6 +164,7 @@ const sslIpn = async (req: Request, res: Response): Promise<void> => {
     }
 
     await SslServices.updateSslPaymentStatus(parcelId, PaymentStatus.SUCCESS, transactionId);
+    void createAuditLog({ action: 'PAYMENT_SUCCEEDED', resource: 'PAYMENT', resourceId: payment.id, details: { gateway: 'SSLCOMMERZ', parcelId, source: 'IPN' } }).catch(console.error);
     sendResponse(res, { success: true, statusCode: 200, message: 'SSLCommerz IPN processed successfully', data: null });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });

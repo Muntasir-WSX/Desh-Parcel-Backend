@@ -19,4 +19,5 @@ router.get('/parcels', auth('ADMIN'), AdminControllers.getAllParcelsForAdmin);
 router.delete('/parcels/:id', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.deleteParcelSchema), AdminControllers.deleteParcelByAdmin);
 router.get('/withdrawal-requests', auth('ADMIN'), AdminControllers.getWithdrawalRequests);
 router.patch('/withdrawal-requests/:id/status', auth('ADMIN'), validateRequest(AdminValidation.withdrawalStatusSchema), AdminControllers.handleWithdrawalStatus);
+router.get('/audit-logs', auth('ADMIN'), validateRequest(AdminValidation.auditLogQuerySchema), AdminControllers.getAuditLogs);
 export const AdminRoutes = router;

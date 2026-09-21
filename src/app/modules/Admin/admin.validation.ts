@@ -29,6 +29,16 @@ const paginationSchema = z.object({
   }),
 });
 
+const auditLogQuerySchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    action: z.string().trim().optional(),
+    resource: z.string().trim().optional(),
+    actorId: z.string().uuid().optional(),
+  }),
+});
+
 export const AdminValidation = {
   idParams,
   roleSchema,
@@ -37,4 +47,5 @@ export const AdminValidation = {
   deleteParcelSchema,
   withdrawalStatusSchema,
   paginationSchema,
+  auditLogQuerySchema,
 };

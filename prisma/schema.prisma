@@ -55,6 +55,7 @@ model User {
   assignedParcels Parcel[]     @relation("RiderParcels")
   otps          Otp[]
   withdrawalRequests  WithdrawalRequest[]  @relation("RiderWithdrawals")
+  auditLogsAsActor AuditLog[] @relation("AuditActor")
 }
 
 model RiderProfile {
@@ -153,6 +154,24 @@ model TrackingLog {
   status    String
   note      String
   createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
 }
 
 enum WithdrawalStatus {

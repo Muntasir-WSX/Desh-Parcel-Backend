@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../../middlewares/auth';
 import { RiderServices } from './rider.service';
 import { ParcelServices } from '../Percel/percel.service';
 import sendResponse from '../../utils/sendResponse';
+import { createAuditLog } from '../../utils/auditLog';
 
 const getMyAssignedParcels = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -42,6 +43,7 @@ const requestCashout = async (req: AuthenticatedRequest, res: Response): Promise
     const riderId = req.user?.id;
     const { amount, bkashNo } = req.body;
     const result = await RiderServices.requestCashoutByRiderFromDB(riderId!, amount, bkashNo);
+    void createAuditLog({ actorId: riderId, action: 'CASHOUT_REQUESTED', resource: 'WITHDRAWAL_REQUEST', resourceId: result.id, details: { amount } }).catch(console.error);
     sendResponse(res, { success: true, statusCode: 200, message: 'Cashout request submitted successfully via bKash', data: result });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -57,6 +59,7 @@ const verifyDeliveryOtp = async (req: AuthenticatedRequest, res: Response): Prom
       parcelId as string,
       req.body.otp
     );
+    void createAuditLog({ actorId: riderId, action: 'PARCEL_DELIVERED', resource: 'PARCEL', resourceId: parcelId as string }).catch(console.error);
     res.status(200).json({ success: true, message: 'Parcel delivered successfully', data: result });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -75,6 +78,7 @@ const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Pro
       status,
       note
     );
+    void createAuditLog({ actorId: riderId, action: 'PARCEL_STATUS_UPDATED', resource: 'PARCEL', resourceId: parcelId as string, details: { status, note } }).catch(console.error);
     res.status(200).json({ success: true, message: `Parcel status updated to ${status} successfully`, data: result });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
