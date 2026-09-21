@@ -85,8 +85,12 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
 };
 
 const loginUserFromDB = async (payload: LoginPayload) => {
-  const { email, password } = payload;
+  const email = payload.email?.trim().toLowerCase();
+  const password = payload.password;
 
+  if (!email || !password) {
+    throw new Error('Email and password are required.');
+  }
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -118,9 +122,14 @@ const loginUserFromDB = async (payload: LoginPayload) => {
     role: user.role,
   };
 
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET is not configured.');
+  }
+
   const accessToken = jwt.sign(
     tokenPayload,
-    process.env.JWT_SECRET || 'default_secret_key',
+    jwtSecret,
     { expiresIn: '7d' }
   );
   const { password: _, ...userWithoutPassword } = user;
@@ -131,9 +140,14 @@ const loginUserFromDB = async (payload: LoginPayload) => {
   };
 };
 
+const logoutUser = async () => {
+  return { loggedOut: true };
+};
+
 
 
 export const AuthServices = {
   registerUserIntoDB,
   loginUserFromDB,
+  logoutUser,
 };
