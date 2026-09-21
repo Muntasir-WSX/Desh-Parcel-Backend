@@ -12,7 +12,22 @@ import { PaymentRoutes } from './app/modules/payments/payment.route';
 const app: Application = express();
 
 app.use(helmet());
-app.use(cors());
+
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('This origin is not allowed by the server CORS policy.'));
+  },
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
