@@ -6,6 +6,7 @@ import { AuthenticatedRequest } from '../../middlewares/auth';
 import sendResponse from '../../utils/sendResponse';
 
 const prisma = new PrismaClient();
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // --- bKash Controllers ---
 const getParcelPaymentForUser = async (parcelId: string, userId: string, role: string) => {
@@ -48,9 +49,9 @@ const bkashCallback = async (req: Request, res: Response): Promise<void> => {
 
     if (status === 'success' || status === 'completed') {
       await BkashServices.executeBkashPayment(paymentID as string, parcelId as string);
-      res.redirect('http://localhost:3000/payment/success'); 
+      res.redirect(`${frontendUrl}/payment/success`);
     } else {
-      res.redirect('http://localhost:3000/payment/failed'); 
+      res.redirect(`${frontendUrl}/payment/failed`);
     }
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -102,7 +103,7 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
       data: { status: PaymentStatus.SUCCESS, transactionId: tran_id as string },
     });
 
-    res.redirect('http://localhost:3000/payment/success');
+    res.redirect(`${frontendUrl}/payment/success`);
   } 
   catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
@@ -110,25 +111,57 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
 };
 
 const sslFail = async (req: Request, res: Response): Promise<void> => {
-  const query = req.query as any;
-  const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
-
-  await prisma.payment.update({
-    where: { parcelId: parcelId as string },
-    data: { status: PaymentStatus.FAILED },
-  });
-  res.redirect('http://localhost:3000/payment/failed');
+  try {
+    const query = req.query as any;
+    const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+    await SslServices.updateSslPaymentStatus(parcelId as string, PaymentStatus.FAILED);
+    res.redirect(`${frontendUrl}/payment/failed`);
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
 };
 
 const sslCancel = async (req: Request, res: Response): Promise<void> => {
-  const query = req.query as any;
-  const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+  try {
+    const query = req.query as any;
+    const parcelId = Array.isArray(query.parcelId) ? query.parcelId[0] : query.parcelId;
+    await SslServices.updateSslPaymentStatus(parcelId as string, PaymentStatus.CANCELLED);
+    res.redirect(`${frontendUrl}/payment/cancel`);
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
 
-  await prisma.payment.update({
-    where: { parcelId: parcelId as string },
-    data: { status: PaymentStatus.CANCELLED },
-  });
-  res.redirect('http://localhost:3000/payment/cancel');
+const sslIpn = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body as any;
+    const parcelId = payload.parcelId;
+    const transactionId = payload.tran_id;
+    const validationId = payload.val_id;
+
+    if (!parcelId || !transactionId || !validationId) {
+      throw new Error('Incomplete SSLCommerz IPN payload.');
+    }
+
+    const payment = await prisma.payment.findUnique({ where: { parcelId } });
+    if (!payment || payment.transactionId !== transactionId) {
+      throw new Error('Payment transaction could not be verified.');
+    }
+
+    const validation = await SslServices.validateSslPayment(validationId);
+    if (validation?.status !== 'VALID' && validation?.status !== 'VALIDATED') {
+      throw new Error('SSLCommerz payment validation failed.');
+    }
+
+    if (Number(validation.amount) !== payment.amount || validation.tran_id !== transactionId) {
+      throw new Error('SSLCommerz payment details do not match.');
+    }
+
+    await SslServices.updateSslPaymentStatus(parcelId, PaymentStatus.SUCCESS, transactionId);
+    sendResponse(res, { success: true, statusCode: 200, message: 'SSLCommerz IPN processed successfully', data: null });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
 };
 
 
@@ -162,5 +195,6 @@ export const PaymentControllers = {
   sslSuccess,
   sslFail,
   sslCancel,
+  sslIpn,
   getPaymentStatusByParcelId,
 };

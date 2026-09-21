@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const store_id = process.env.STORE_ID!;
 const store_passwd = process.env.STORE_PASSWORD!;
 const is_live = process.env.IS_LIVE === 'true'; 
+const apiUrl = process.env.API_URL || 'http://localhost:5000';
 
 const initSslPayment = async (parcelId: string, amount: number, user: { name: string; email: string; phone: string }) => {
   const tran_id = `TRAN_${Date.now()}`;
@@ -14,10 +15,10 @@ const initSslPayment = async (parcelId: string, amount: number, user: { name: st
     total_amount: amount,
     currency: 'BDT',
     tran_id: tran_id, 
-    success_url: `http://localhost:5000/api/v1/payments/ssl/success?parcelId=${parcelId}&tran_id=${tran_id}`,
-    fail_url: `http://localhost:5000/api/v1/payments/ssl/fail?parcelId=${parcelId}`,
-    cancel_url: `http://localhost:5000/api/v1/payments/ssl/cancel?parcelId=${parcelId}`,
-    ipn_url: 'http://localhost:5000/api/v1/payments/ssl/ipn',
+    success_url: `${apiUrl}/api/v1/payments/ssl/success?parcelId=${parcelId}&tran_id=${tran_id}`,
+    fail_url: `${apiUrl}/api/v1/payments/ssl/fail?parcelId=${parcelId}`,
+    cancel_url: `${apiUrl}/api/v1/payments/ssl/cancel?parcelId=${parcelId}`,
+    ipn_url: `${apiUrl}/api/v1/payments/ssl/ipn`,
     shipping_method: 'Courier',
     product_name: 'Parcel Delivery Service',
     product_category: 'Logistics',
@@ -75,7 +76,27 @@ const validateSslPayment = async (valId: string) => {
   return await sslcz.validate({ val_id: valId });
 };
 
+const updateSslPaymentStatus = async (
+  parcelId: string,
+  status: PaymentStatus,
+  transactionId?: string
+) => {
+  const payment = await prisma.payment.findUnique({ where: { parcelId } });
+  if (!payment) {
+    throw new Error('Payment transaction not found.');
+  }
+
+  return prisma.payment.update({
+    where: { parcelId },
+    data: {
+      status,
+      transactionId: transactionId || payment.transactionId,
+    },
+  });
+};
+
 export const SslServices = {
   initSslPayment,
   validateSslPayment,
+  updateSslPaymentStatus,
 };

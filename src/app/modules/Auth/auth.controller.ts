@@ -49,9 +49,25 @@ const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-
+const loginWithGoogle = async (req: Request, res: Response) => {
+  try {
+    const result = await AuthServices.loginWithGoogle(req.body);
+    res.status(200).json({
+      success: true,
+      message: 'Google login successful!',
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(401).json({
+      success: false,
+      message: error.message || 'Google authentication failed',
+      errors: [{ path: '', message: error.message }],
+    });
+  }
+};
 
 export const AuthControllers = {
   registerUser,
   loginUser,
+  loginWithGoogle,
 };
