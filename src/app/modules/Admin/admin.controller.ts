@@ -15,7 +15,7 @@ const updateUserRole = async (req: AuthenticatedRequest, res: Response): Promise
     );
     res.status(200).json({ success: true, message: 'User role updated successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 const assignParcelToRider = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -25,7 +25,7 @@ const assignParcelToRider = async (req: AuthenticatedRequest, res: Response): Pr
     const result = await AdminServices.assignParcelToRiderIntoDB(parcelId, riderId);
     res.status(200).json({ success: true, message: 'Parcel assigned to rider successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -35,7 +35,7 @@ const approveParcel = async (req: AuthenticatedRequest, res: Response): Promise<
     const result = await AdminServices.approveParcelIntoDB(parcelId as string);
     res.status(200).json({ success: true, message: 'Parcel approved successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -45,7 +45,7 @@ const approveRider = async (req: AuthenticatedRequest, res: Response): Promise<v
     const result = await AdminServices.approveRiderIntoDB(riderId as string);
     res.status(200).json({ success: true, message: 'Rider approved successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -55,7 +55,7 @@ const banUser = async (req: AuthenticatedRequest, res: Response): Promise<void> 
     const result = await AdminServices.banUserIntoDB(userId as string);
     res.status(200).json({ success: true, message: 'User banned successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -66,7 +66,7 @@ const banUser = async (req: AuthenticatedRequest, res: Response): Promise<void> 
       const result = await AdminServices.updateParcelHubStatusIntoDB(parcelId as string, currentHub, note);
       res.status(200).json({ success: true, message: 'Parcel hub status updated successfully', data: result });
     } catch (error: any) {
-      res.status(400).json({ success: false, message: error.message });
+      sendResponse(res, { success: false, statusCode: 400, message: error.message });
     }
   };
 
@@ -75,7 +75,7 @@ const getDashboardStats = async (req: AuthenticatedRequest, res: Response): Prom
     const result = await AdminServices.getAdminDashboardStatsFromDB();
     res.status(200).json({ success: true, message: 'Dashboard stats fetched successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 

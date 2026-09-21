@@ -10,7 +10,7 @@ const getMyAssignedParcels = async (req: AuthenticatedRequest, res: Response): P
     const result = await RiderServices.getRiderAssignedParcelsFromDB(riderId!);
     res.status(200).json({ success: true, message: 'Assigned parcels fetched successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -22,7 +22,7 @@ const getSingleAssignedParcel = async (req: AuthenticatedRequest, res: Response)
     const result = await RiderServices.getParcelByIdForRiderFromDB(riderId!, parcelId as string);
     res.status(200).json({ success: true, message: 'Parcel details fetched successfully', data: result });
   } catch (error: any) {
-    res.status(404).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 404, message: error.message });
   }
 };
 
@@ -59,7 +59,7 @@ const verifyDeliveryOtp = async (req: AuthenticatedRequest, res: Response): Prom
     );
     res.status(200).json({ success: true, message: 'Parcel delivered successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -77,7 +77,7 @@ const updateParcelStatus = async (req: AuthenticatedRequest, res: Response): Pro
     );
     res.status(200).json({ success: true, message: `Parcel status updated to ${status} successfully`, data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 

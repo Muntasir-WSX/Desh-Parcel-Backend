@@ -35,7 +35,7 @@ const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): P
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     const message = error instanceof Error ? error.message : 'Payment verification failed';
-    res.status(400).json({ success: false, message });
+    sendResponse(res, { success: false, statusCode: 400, message });
   }
 };
 
@@ -53,7 +53,7 @@ const bkashCallback = async (req: Request, res: Response): Promise<void> => {
       res.redirect('http://localhost:3000/payment/failed'); 
     }
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -76,7 +76,7 @@ const initiateSslPayment = async (req: AuthenticatedRequest, res: Response): Pro
 
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -105,7 +105,7 @@ const sslSuccess = async (req: Request, res: Response): Promise<void> => {
     res.redirect('http://localhost:3000/payment/success');
   } 
   catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 

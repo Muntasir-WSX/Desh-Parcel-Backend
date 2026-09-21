@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { ParcelServices } from './percel.service';
+import sendResponse from '../../utils/sendResponse';
 
 const createParcel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -8,7 +9,7 @@ const createParcel = async (req: AuthenticatedRequest, res: Response): Promise<v
     const result = await ParcelServices.createParcelIntoDB(userId!, req.body, req.file);
     res.status(201).json({ success: true, message: "Parcel booked successfully", data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -21,7 +22,7 @@ const getAllParcels = async (req: AuthenticatedRequest, res: Response): Promise<
     );
     res.status(200).json({ success: true, message: "Parcels fetched successfully", meta: result.meta, data: result.data });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -34,7 +35,7 @@ const getParcelTracking = async (req: AuthenticatedRequest, res: Response): Prom
     const result = await ParcelServices.getParcelTrackingByTrackingIdFromDB(trackingId);
     res.status(200).json({ success: true, message: 'Parcel tracking fetched successfully', data: result });
   } catch (error: any) {
-    res.status(404).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 404, message: error.message });
   }
 };
 const getParcelById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -47,7 +48,7 @@ const getParcelById = async (req: AuthenticatedRequest, res: Response): Promise<
     );
     res.status(200).json({ success: true, message: 'Parcel fetched successfully', data: result });
   } catch (error: any) {
-    res.status(404).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 404, message: error.message });
   }
 };
 
@@ -63,7 +64,7 @@ const updateParcel = async (req: AuthenticatedRequest, res: Response): Promise<v
     );
     res.status(200).json({ success: true, message: 'Parcel updated successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 
@@ -77,7 +78,7 @@ const deleteParcel = async (req: AuthenticatedRequest, res: Response): Promise<v
     );
     res.status(200).json({ success: true, message: 'Parcel deleted successfully', data: result });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
 

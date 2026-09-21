@@ -14,7 +14,7 @@ const validateRequest = (schema: ZodTypeAny) => {
       res.status(400).json({
         success: false,
         message: 'Validation Error',
-        errors: error.errors ?? [{ message: error.message ?? 'Validation failed' }],
+        errors: error.issues ?? error.errors ?? [{ path: '', message: error.message ?? 'Validation failed' }],
       });
     }
   };

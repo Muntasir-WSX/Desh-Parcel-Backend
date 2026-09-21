@@ -12,8 +12,9 @@ const sendResponse = <T>(res: Response, jsonData: IResponse<T>) => {
   res.status(jsonData.statusCode).json({
     success: jsonData.success,
     message: jsonData.message,
-    data: jsonData.data || null,
-    ...(jsonData.errors && { errors: jsonData.errors }),
+    ...(jsonData.success
+      ? { data: jsonData.data ?? null }
+      : { errors: jsonData.errors ?? [{ path: '', message: jsonData.message }] }),
   });
 };
 
