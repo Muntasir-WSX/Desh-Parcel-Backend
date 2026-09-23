@@ -1,7 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
 
@@ -27,7 +26,7 @@ interface LoginPayload {
 
 interface GoogleLoginPayload {
   idToken: string;
-  phone?: string;
+  phone: string;
 }
 
 const createAccessToken = (user: { id: string; email: string; role: Role }) => {
@@ -153,58 +152,63 @@ const loginUserFromDB = async (payload: LoginPayload) => {
 };
 
 const loginWithGoogle = async (payload: GoogleLoginPayload) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    throw new Error('GOOGLE_CLIENT_ID is not configured.');
+  const { idToken, phone } = payload;
+
+  if (!idToken) {
+    throw new Error('Google ID Token is required!');
   }
 
   const ticket = await googleClient.verifyIdToken({
-    idToken: payload.idToken,
-    audience: clientId,
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
   });
-  const googleUser = ticket.getPayload();
+  const googlePayload = ticket.getPayload();
 
-  if (!googleUser?.sub || !googleUser.email || googleUser.email_verified !== true) {
-    throw new Error('Google account verification failed.');
+  if (!googlePayload || !googlePayload.email) {
+    throw new Error('Invalid Google Token!');
   }
 
-  const email = googleUser.email.trim().toLowerCase();
-  if (email === PROTECTED_ADMIN_EMAIL) {
-    throw new Error('The protected admin account must use password login.');
-  }
+  const email = googlePayload.email;
+  const name = googlePayload.name || 'Google User';
 
-  let user = await prisma.user.findFirst({
-    where: { OR: [{ googleId: googleUser.sub }, { email }] },
-  });
-
-  if (user?.isBanned) {
-    throw new Error('This account has been banned by an administrator.');
-  }
+  let user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
-    const temporaryPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+    if (!phone) {
+      throw new Error('Phone number is required for first-time registration via Google!');
+    }
+
     user = await prisma.user.create({
       data: {
-        name: googleUser.name || email.split('@')[0],
+        name,
         email,
-        googleId: googleUser.sub,
-        phone: payload.phone || 'N/A',
-        password: temporaryPassword,
+        phone,
+        password: '',
         role: 'CUSTOMER',
         isVerified: true,
       },
     });
-  } else if (!user.googleId || !user.isVerified) {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: { googleId: googleUser.sub, isVerified: true },
-    });
   }
 
-  const { password: _, ...userWithoutPassword } = user;
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET is not configured.');
+  }
+
+  const accessToken = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    jwtSecret,
+    { expiresIn: '1d' }
+  );
+
   return {
-    accessToken: createAccessToken(user),
-    user: userWithoutPassword,
+    accessToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
   };
 };
 

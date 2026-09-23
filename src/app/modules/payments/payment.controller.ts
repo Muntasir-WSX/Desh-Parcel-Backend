@@ -37,7 +37,9 @@ const initiateBkashPayment = async (req: AuthenticatedRequest, res: Response): P
     void createAuditLog({ actorId: req.user?.id, action: 'PAYMENT_INITIATED', resource: 'PAYMENT', resourceId: parcel.payment!.id, details: { gateway: 'BKASH', parcelId } }).catch(console.error);
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
-    const message = error instanceof Error ? error.message : 'Payment verification failed';
+    const message = error.response?.data?.statusMessage
+      || error.response?.data?.message
+      || (error instanceof Error ? error.message : 'Payment verification failed');
     sendResponse(res, { success: false, statusCode: 400, message });
   }
 };

@@ -7,16 +7,15 @@ const prisma = new PrismaClient();
 const getBkashToken = async () => {
   const response = await axios.post(
     `${process.env.BKASH_BASE_URL}/tokenized/checkout/token/grant`,
-    {},
+    {
+      app_key: process.env.BKASH_APP_KEY,
+      app_secret: process.env.BKASH_APP_SECRET,
+    },
     {
       headers: {
         'Content-Type': 'application/json',
         username: process.env.BKASH_USERNAME,
         password: process.env.BKASH_PASSWORD,
-      },
-      auth: {
-        username: process.env.BKASH_APP_KEY!,
-        password: process.env.BKASH_APP_SECRET!,
       },
     }
   );

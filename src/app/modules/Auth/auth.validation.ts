@@ -24,7 +24,7 @@ const loginSchema = z.object({
 const googleLoginSchema = z.object({
   body: z.object({
     idToken: z.string().trim().min(1, 'Google ID token is required.'),
-    phone: z.string().trim().min(7).optional(),
+    phone: z.string().trim().min(7, 'Phone number is required.'),
   }),
 });
 

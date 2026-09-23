@@ -585,8 +585,10 @@ Content-Type: application/json
 
 ```json
 {
-  "amount": 100,
-  "bkashNo": "01700000000"
+  "amount": 100,//dynamic
+  "bkashNo": "01770618575",
+  "OTP":"123456",
+  "Password":"12121"
 }
 ```
 
