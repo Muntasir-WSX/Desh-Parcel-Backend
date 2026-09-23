@@ -6,3 +6,4 @@ build
 .agents
 .claude
 .cursor
+.vercel
