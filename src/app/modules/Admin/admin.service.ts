@@ -1,6 +1,6 @@
 import { PrismaClient, ParcelStatus, Role, WithdrawalStatus } from '@prisma/client';
 import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
-import { sendEmail } from '../../utils/sendEmail';
+import { sendEmail, sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
@@ -292,7 +292,7 @@ const updateWithdrawalStatusByAdminFromDB = async (
     throw new Error('Invalid withdrawal status.');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const updatedRequest = await prisma.$transaction(async (tx) => {
     const updatedRequest = await tx.withdrawalRequest.update({
       where: { id: requestId },
       data: { status },
@@ -310,6 +310,26 @@ const updateWithdrawalStatusByAdminFromDB = async (
 
     return updatedRequest;
   });
+
+  const rider = await prisma.user.findUnique({
+    where: { id: request.riderId },
+    select: { name: true, email: true },
+  });
+  if (rider) {
+    void sendNotificationEmail({
+      to: rider.email,
+      userName: rider.name,
+      subject: `Cashout Request ${status === WithdrawalStatus.APPROVED ? 'Approved' : 'Rejected'}`,
+      title: `Withdrawal ${status === WithdrawalStatus.APPROVED ? 'Approved' : 'Rejected'}`,
+      message: status === WithdrawalStatus.APPROVED
+        ? `Your cashout request of ৳${request.amount} has been approved.`
+        : `Your cashout request of ৳${request.amount} was rejected and the amount has been returned to your balance.`,
+      actionText: 'View Earnings',
+      actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/provider/earnings`,
+    }).catch((error) => console.error('Withdrawal status email could not be sent:', error));
+  }
+
+  return updatedRequest;
 };
 
 const getAuditLogsFromDB = async (query: {

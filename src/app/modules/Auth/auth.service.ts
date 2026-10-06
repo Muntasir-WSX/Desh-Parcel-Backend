@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { PROTECTED_ADMIN_EMAIL } from '../../config/admin';
+import { sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -99,6 +100,16 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
 
     return newUser;
   });
+
+  void sendNotificationEmail({
+    to: result.email,
+    userName: result.name,
+    subject: 'Welcome to DeshParcel! Account Created',
+    title: 'Account Successfully Registered',
+    message: 'Your DeshParcel account has been created successfully. Please login to your dashboard to start sending or tracking parcels across 64 districts.',
+    actionText: 'Login to Dashboard',
+    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
+  }).catch((error) => console.error('Welcome email could not be sent:', error));
 
   const { password: _, ...userWithoutPassword } = result;
   return userWithoutPassword;

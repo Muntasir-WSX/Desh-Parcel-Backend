@@ -1,23 +1,60 @@
 import nodemailer from 'nodemailer';
+import { getDynamicEmailTemplate } from './emailTemplate';
 
-export const sendEmail = async (to: string, subject: string, htmlContent: string) => {
+interface SendNotificationEmailParams {
+  to: string;
+  userName: string;
+  subject: string;
+  title: string;
+  message: string;
+  actionText?: string;
+  actionUrl?: string;
+}
+
+const createTransporter = () => nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const canSendEmail = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn('Email credentials are not configured. Skipping email notification.');
-    return;
+    return false;
   }
+  return true;
+};
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER, 
-      pass: process.env.EMAIL_PASS, 
-    },
+export const sendEmail = async (to: string, subject: string, html: string) => {
+  if (!canSendEmail()) return;
+
+  await createTransporter().sendMail({
+    from: `"DeshParcel Logistics" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
   });
+};
 
-  await transporter.sendMail({
-    from: '"DeshParcel & Logistics" <support@deshparcel.com>',
+export const sendNotificationEmail = async ({
+  to,
+  userName,
+  subject,
+  title,
+  message,
+  actionText,
+  actionUrl,
+}: SendNotificationEmailParams) => {
+  if (!canSendEmail()) return;
+
+  const htmlContent = getDynamicEmailTemplate(userName, title, message, actionText, actionUrl);
+
+  await createTransporter().sendMail({
+    from: `"DeshParcel Logistics" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html: htmlContent,

@@ -1,7 +1,7 @@
 import { PrismaClient, ParcelStatus } from '@prisma/client';
 import { cloudinaryUpload } from '../../config/cloudinary';
 import { calculateParcelDeliveryFee } from '../../utils/calculatePrice';
-import { sendEmail } from '../../utils/sendEmail';
+import { sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
@@ -86,14 +86,15 @@ const createParcelIntoDB = async (
   if (sender) {
     const trackingUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${result.trackingId}`;
     try {
-      await sendEmail(
-        sender.email,
-        'Your parcel is pending - DeshParcel',
-        `<h3>Hello ${sender.name},</h3>
-         <p>Your parcel with tracking ID <b>${result.trackingId}</b> has been created.</p>
-         <p>It is currently pending admin approval. Delivery fee: <b>${deliveryFee} BDT</b>.</p>
-         <p>Track your parcel: <a href="${trackingUrl}">${trackingUrl}</a></p>`
-      );
+      await sendNotificationEmail({
+        to: sender.email,
+        userName: sender.name,
+        subject: 'Your parcel is pending - DeshParcel',
+        title: 'Parcel Created Successfully',
+        message: `Your parcel with tracking ID ${result.trackingId} has been created and is waiting for payment and admin approval. Delivery fee: ৳${deliveryFee} BDT.`,
+        actionText: 'Track Parcel',
+        actionUrl: trackingUrl,
+      });
     } catch (error) {
       console.error('Pending parcel email could not be sent:', error);
     }
@@ -172,7 +173,7 @@ const updateParcelInDB = async (
 
   let parcelImage = parcel.parcelImage;
 
-  // যদি আপডেট করার সময় নতুন ছবি দেওয়া হয়
+  
   if (file) {
     const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinaryUpload.uploader.upload_stream(
@@ -276,7 +277,6 @@ const verifyAndDeliverParcel = async (riderId: string, parcelId: string, otpInpu
       data: { totalBalance: { increment: commission } },
     });
 
-
     await tx.trackingLog.create({
       data: {
         parcelId,
@@ -287,6 +287,22 @@ const verifyAndDeliverParcel = async (riderId: string, parcelId: string, otpInpu
 
     return updatedParcel;
   });
+
+  const fullParcel = await prisma.parcel.findUnique({
+    where: { id: parcelId },
+    include: { sender: { select: { name: true, email: true } } },
+  });
+  if (fullParcel?.sender) {
+    void sendNotificationEmail({
+      to: fullParcel.sender.email,
+      userName: fullParcel.sender.name,
+      subject: `Parcel Delivered Successfully (${fullParcel.trackingId})`,
+      title: 'Your Shipment Has Been Delivered',
+      message: `Your parcel with tracking ID ${fullParcel.trackingId} has been successfully delivered.`,
+      actionText: 'View Details',
+      actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${fullParcel.trackingId}`,
+    }).catch((error) => console.error('Parcel delivery email could not be sent:', error));
+  }
 
   return result;
 };

@@ -26,6 +26,7 @@ The current implementation includes the core assignment requirements:
 - Prisma transactions for important workflows
 - Redis-based password-reset OTP handling
 - Cloudinary parcel image uploads
+- Nodemailer notifications for parcel, delivery OTP, payment, registration, and cashout events
 - Helmet security headers, rate limiting, and configurable CORS
 
 ## Technology Stack
@@ -165,6 +166,7 @@ EMAIL_USER=your-email
 EMAIL_PASS=your-email-password
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
+SMTP_SECURE=false
 
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key

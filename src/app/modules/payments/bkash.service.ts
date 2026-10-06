@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PrismaClient, PaymentStatus, PaymentGateway } from '@prisma/client';
+import { sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
@@ -107,6 +108,22 @@ const executeBkashPayment = async (paymentID: string, parcelId: string) => {
         transactionId: result.trxID,
       },
     });
+
+    const parcel = await prisma.parcel.findUnique({
+      where: { id: parcelId },
+      include: { sender: true },
+    });
+    if (parcel?.sender) {
+      void sendNotificationEmail({
+        to: parcel.sender.email,
+        userName: parcel.sender.name,
+        subject: `Payment Successful - ${result.trxID}`,
+        title: 'Payment Confirmed',
+        message: `Your payment of ৳${payment.amount} has been successfully processed via bKash. Your parcel is now active for processing.`,
+        actionText: 'Track Parcel',
+        actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${parcel.trackingId}`,
+      }).catch((error) => console.error('bKash payment email could not be sent:', error));
+    }
 
     return { success: true, message: 'Payment successful', trxID: result.trxID };
   } else {

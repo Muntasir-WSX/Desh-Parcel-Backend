@@ -1,4 +1,4 @@
-export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
+export const getDynamicEmailTemplate = (userName: string, title: string, message: string, actionText?: string, actionUrl?: string) => {
   return `
     <!DOCTYPE html>
     <html>
@@ -7,71 +7,78 @@ export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
       <style>
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f4f6f9; /* Clean Light Background */
+          background-color: #070b19; /* Project Dark Theme Background */
           margin: 0;
           padding: 0;
         }
         .email-container {
           max-width: 600px;
           margin: 30px auto;
-          background: #ffffff; /* White Card Background */
-          border-radius: 10px;
+          background: #0b132b; /* Card Dark Background */
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-          border: 1px solid #e2e8f0;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #ffffff;
         }
         .header {
-          background: #ffffff;
-          color: #1e293b;
+          background: #050814;
           text-align: center;
           padding: 25px 20px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         .header h1 {
           margin: 0;
-          font-size: 24px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          color: #2563eb; /* Professional Blue */
+          font-size: 22px;
+          font-weight: 800;
+          color: #ef4444; /* Brand Red */
+          letter-spacing: 1px;
         }
         .body-content {
           padding: 35px 30px;
-          color: #334155; /* Dark Slate Text for Readability */
+          color: #cbd5e1; /* Light Slate Text */
           line-height: 1.6;
         }
         .body-content h2 {
-          color: #0f172a;
+          color: #ffffff;
           font-size: 20px;
           margin-top: 0;
         }
-        .otp-box {
-          background: #f8fafc; /* Light Blue-Gray box inside */
-          border: 2px dashed #3b82f6; /* Blue Dashed Border */
-          border-radius: 8px;
-          text-align: center;
+        .message-box {
+          background: #050814;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
           padding: 20px;
           margin: 25px 0;
+          color: #e2e8f0;
+          font-size: 14px;
         }
-        .otp-code {
-          font-size: 36px;
-          font-weight: 800;
-          color: #2563eb; /* Royal Blue OTP Code */
-          letter-spacing: 6px;
-          margin: 0;
+        .btn {
+          display: inline-block;
+          background: #dc2626;
+          color: #ffffff;
+          text-decoration: none;
+          padding: 12px 25px;
+          border-radius: 10px;
+          font-weight: bold;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-top: 20px;
         }
         .footer {
-          background: #f8fafc;
+          background: #050814;
           text-align: center;
           padding: 15px;
-          font-size: 12px;
+          font-size: 11px;
           color: #64748b;
-          border-top: 1px solid #e2e8f0;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
       </style>
     </head>
     <body>
       <div class="email-container">
-        <!-- Header with White & Blue Theme -->
+        <!-- Header -->
         <div class="header">
           <h1>DeshParcel & Logistics</h1>
         </div>
@@ -79,26 +86,32 @@ export const getOtpEmailTemplate = (userName: string, otpCode: string) => {
         <!-- Body -->
         <div class="body-content">
           <h2>Hello, ${userName || 'Valued User'}!</h2>
-          <p>We received a request to reset your password for your <strong>DeshParcel</strong> account. Please use the secure verification code below to proceed:</p>
+          <p style="color: #ef4444; font-weight: 600; font-size: 14px; margin-bottom: 5px;">${title}</p>
           
-          <div class="otp-box">
-            <p class="otp-code">${otpCode}</p>
+          <div class="message-box">
+            <p style="margin: 0;">${message}</p>
           </div>
           
-          <p>This OTP is valid for <strong style="color: #2563eb;">90 seconds</strong>. Please do not share this code with anyone for security reasons.</p>
-          <p>If you didn't request a password reset, you can safely ignore this email.</p>
+          ${actionText && actionUrl ? `<a href="${actionUrl}" class="btn">${actionText}</a>` : ''}
           
           <p style="margin-top: 35px; margin-bottom: 0;">Best regards,</p>
-          <p style="margin-top: 5px; font-weight: 600; color: #2563eb;">The DeshParcel Team</p>
+          <p style="margin-top: 5px; font-weight: 600; color: #ef4444;">The DeshParcel Team</p>
         </div>
         
         <!-- Footer -->
         <div class="footer">
           <p>&copy; ${new Date().getFullYear()} DeshParcel Platform. All rights reserved.</p>
-          <p>This is an automated message, please do not reply.</p>
+          <p>This is an automated notification from your logistics portal.</p>
         </div>
       </div>
     </body>
     </html>
   `;
 };
+
+export const getOtpEmailTemplate = (userName: string, otpCode: string) =>
+  getDynamicEmailTemplate(
+    userName,
+    'Password Reset OTP',
+    `Your password reset code is <strong>${otpCode}</strong>. It expires in 5 minutes.`
+  );

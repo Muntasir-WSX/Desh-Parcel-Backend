@@ -1,4 +1,5 @@
 import { PrismaClient, ParcelStatus } from '@prisma/client';
+import { sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
@@ -93,6 +94,28 @@ const updateParcelStatusByRiderFromDB = async (
 
     return updatedParcel;
   });
+
+  if (status === ParcelStatus.PICKED_UP || status === ParcelStatus.OUT_FOR_DELIVERY) {
+    const parcelWithSender = await prisma.parcel.findUnique({
+      where: { id: parcelId },
+      include: { sender: { select: { name: true, email: true } } },
+    });
+
+    if (parcelWithSender?.sender) {
+      const otpMessage = result.deliveryOtp
+        ? ` Your delivery OTP is ${result.deliveryOtp}. Please share it only with the rider at delivery time.`
+        : '';
+      void sendNotificationEmail({
+        to: parcelWithSender.sender.email,
+        userName: parcelWithSender.sender.name,
+        subject: `Parcel ${status === ParcelStatus.OUT_FOR_DELIVERY ? 'Out for Delivery' : 'Picked Up'} - ${parcelWithSender.trackingId}`,
+        title: status === ParcelStatus.OUT_FOR_DELIVERY ? 'Your Parcel Is Out for Delivery' : 'Your Parcel Has Been Picked Up',
+        message: `Your parcel with tracking ID ${parcelWithSender.trackingId} has been updated to ${status.replace('_', ' ')}.${otpMessage}`,
+        actionText: 'Track Parcel',
+        actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${parcelWithSender.trackingId}`,
+      }).catch((error) => console.error('Rider parcel status email could not be sent:', error));
+    }
+  }
 
   return result;
 };
@@ -211,6 +234,22 @@ const requestCashoutByRiderFromDB = async (riderId: string, amount: number, bkas
 
     return withdrawal;
   });
+
+  const rider = await prisma.user.findUnique({
+    where: { id: riderId },
+    select: { name: true, email: true },
+  });
+  if (rider) {
+    void sendNotificationEmail({
+      to: rider.email,
+      userName: rider.name,
+      subject: 'Cashout Request Submitted Successfully',
+      title: 'Withdrawal Request Pending',
+      message: `We received your cashout request of ৳${amount} to bKash (${bkashNo}). Admin will review it within 24 hours.`,
+      actionText: 'View Earnings',
+      actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/provider/earnings`,
+    }).catch((error) => console.error('Cashout request email could not be sent:', error));
+  }
 
   return result;
 };

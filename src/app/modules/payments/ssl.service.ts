@@ -1,11 +1,12 @@
 import SSLCommerzPayment from 'sslcommerz-lts';
 import { PrismaClient, PaymentStatus, PaymentGateway } from '@prisma/client';
+import { sendNotificationEmail } from '../../utils/sendEmail';
 
 const prisma = new PrismaClient();
 
 const store_id = process.env.STORE_ID!;
 const store_passwd = process.env.STORE_PASSWORD!;
-const is_live = process.env.IS_LIVE === 'true'; 
+const is_live = process.env.IS_LIVE === 'true';
 const apiUrl = process.env.API_URL || 'http://localhost:5000';
 
 const initSslPayment = async (parcelId: string, amount: number, user: { name: string; email: string; phone: string }) => {
@@ -14,7 +15,7 @@ const initSslPayment = async (parcelId: string, amount: number, user: { name: st
   const data = {
     total_amount: amount,
     currency: 'BDT',
-    tran_id: tran_id, 
+    tran_id: tran_id,
     success_url: `${apiUrl}/api/v1/payments/ssl/success?parcelId=${parcelId}&tran_id=${tran_id}`,
     fail_url: `${apiUrl}/api/v1/payments/ssl/fail?parcelId=${parcelId}`,
     cancel_url: `${apiUrl}/api/v1/payments/ssl/cancel?parcelId=${parcelId}`,
@@ -39,7 +40,7 @@ const initSslPayment = async (parcelId: string, amount: number, user: { name: st
 
   const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
 
-  
+
   const apiResponse: any = await sslcz.init(data);
 
   if (apiResponse?.GatewayPageURL) {
@@ -86,13 +87,34 @@ const updateSslPaymentStatus = async (
     throw new Error('Payment transaction not found.');
   }
 
-  return prisma.payment.update({
-    where: { parcelId },
+  
+const updatedPayment = await prisma.payment.update({
+  where: { parcelId },
     data: {
       status,
       transactionId: transactionId || payment.transactionId,
     },
   });
+
+  if (status === PaymentStatus.SUCCESS && payment.status !== PaymentStatus.SUCCESS) {
+    const parcel = await prisma.parcel.findUnique({
+      where: { id: parcelId },
+      include: { sender: true },
+    });
+    if (parcel?.sender) {
+      void sendNotificationEmail({
+        to: parcel.sender.email,
+        userName: parcel.sender.name,
+        subject: `Payment Successful - ${updatedPayment.transactionId || 'Confirmed'}`,
+        title: 'Payment Confirmed',
+        message: `Your payment of ৳${payment.amount} has been successfully processed via SSLCommerz. Your parcel is now active for processing.`,
+        actionText: 'Track Parcel',
+        actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/track/${parcel.trackingId}`,
+      }).catch((error) => console.error('SSLCommerz payment email could not be sent:', error));
+    }
+  }
+
+  return updatedPayment;
 };
 
 export const SslServices = {
