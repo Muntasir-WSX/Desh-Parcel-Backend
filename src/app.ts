@@ -14,21 +14,26 @@ const app: Application = express();
 
 app.use(helmet());
 
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const corsEnv = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowedOrigins = corsEnv.split(',').map((origin) => origin.trim());
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // যদি সার্ভার-টু-সার্ভার রিকোয়েস্ট (Postman/Thunder Client) হয়, যার origin থাকে না
+      if (!origin) return callback(null, true);
 
-    callback(new Error('This origin is not allowed by the server CORS policy.'));
-  },
-}));
+      // যদি এনভায়রনমেন্টে '*' থাকে অথবা অরিজিন লিস্টে মিলে যায়
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('This origin is not allowed by the server CORS policy.'));
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

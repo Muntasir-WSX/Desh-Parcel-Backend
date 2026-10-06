@@ -18,7 +18,7 @@ export const getDynamicEmailTemplate = (userName: string, title: string, message
           border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-          border: 1px solid rgba(239, 68, 68, 0.2);
+          border: 1px solid rgba(198, 13, 13, 0.2);
           color: #ffffff;
         }
         .header {
@@ -31,7 +31,7 @@ export const getDynamicEmailTemplate = (userName: string, title: string, message
           margin: 0;
           font-size: 22px;
           font-weight: 800;
-          color: #ef4444; /* Brand Red */
+          color: #c30b0b; /* Brand Red */
           letter-spacing: 1px;
         }
         .body-content {
@@ -55,7 +55,7 @@ export const getDynamicEmailTemplate = (userName: string, title: string, message
         }
         .btn {
           display: inline-block;
-          background: #dc2626;
+          background: #c30b0b;
           color: #ffffff;
           text-decoration: none;
           padding: 12px 25px;
@@ -86,7 +86,7 @@ export const getDynamicEmailTemplate = (userName: string, title: string, message
         <!-- Body -->
         <div class="body-content">
           <h2>Hello, ${userName || 'Valued User'}!</h2>
-          <p style="color: #ef4444; font-weight: 600; font-size: 14px; margin-bottom: 5px;">${title}</p>
+          <p style="color: #c30b0b; font-weight: 600; font-size: 14px; margin-bottom: 5px;">${title}</p>
           
           <div class="message-box">
             <p style="margin: 0;">${message}</p>
@@ -95,7 +95,7 @@ export const getDynamicEmailTemplate = (userName: string, title: string, message
           ${actionText && actionUrl ? `<a href="${actionUrl}" class="btn">${actionText}</a>` : ''}
           
           <p style="margin-top: 35px; margin-bottom: 0;">Best regards,</p>
-          <p style="margin-top: 5px; font-weight: 600; color: #ef4444;">The DeshParcel Team</p>
+          <p style="margin-top: 5px; font-weight: 600; color: #c30b0b;">The DeshParcel Team</p>
         </div>
         
         <!-- Footer -->
