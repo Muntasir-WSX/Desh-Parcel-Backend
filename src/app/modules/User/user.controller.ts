@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { UserServices } from './user.service';
 import sendResponse from '../../utils/sendResponse';
+import { uploadBufferToCloudinary } from '../../utils/uploadToCloudinary';
 
 const getMyProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -16,7 +17,20 @@ const getMyProfile = async (req: AuthenticatedRequest, res: Response): Promise<v
 const updateMyProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    const result = await UserServices.updateMyProfileIntoDB(userId!, req.body);
+
+    let profileImageUrl: string | undefined;
+
+     if (req.file){
+      const uploadResult = await uploadBufferToCloudinary(req.file.buffer, 'deshparcel/profiles');
+      profileImageUrl = uploadResult.secure_url;
+     }
+
+     const updatePayload = {
+      ...req.body,
+      ...(profileImageUrl && { profileImage: profileImageUrl }),
+    };
+
+    const result = await UserServices.updateMyProfileIntoDB(userId!, updatePayload);
     res.status(200).json({ success: true, message: 'Profile updated successfully', data: result });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
