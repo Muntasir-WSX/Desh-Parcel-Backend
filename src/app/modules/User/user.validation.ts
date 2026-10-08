@@ -5,8 +5,12 @@ const updateProfileSchema = z.object({
     name: z.string().trim().min(2).optional(),
     phone: z.string().trim().min(7).optional(),
     email: z.string().trim().email().optional(),
-  }).refine((body) => Object.keys(body).length > 0, 'At least one profile field is required.'),
-});
+  }),
+  file: z.any().optional(),
+}).refine(
+  ({ body, file }) => Object.keys(body).length > 0 || file,
+  'At least one profile field or a profile image is required.',
+);
 
 const forgotPasswordSchema = z.object({
   body: z.object({ email: z.string().trim().email() }),

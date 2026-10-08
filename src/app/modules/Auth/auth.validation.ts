@@ -19,11 +19,19 @@ const registerSchema = z.object({
         strongPasswordRegex,
         'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.'
       ),
-    role: z.enum(['CUSTOMER', 'RIDER']).optional(),
+    role: z.enum(['CUSTOMER', 'RIDER']).default('CUSTOMER'),
     vehicleType: z.string().trim().optional(),
     vehicleNumber: z.string().trim().optional(),
     licenseNumber: z.string().trim().optional(),
     nidNumber: z.string().trim().optional(),
+  }).refine((data) => {
+    if (data.role === 'RIDER') {
+      return data.vehicleType && data.vehicleNumber && data.licenseNumber && data.nidNumber;
+    }
+    return true;
+  }, {
+    message: 'Vehicle type, vehicle number, license number, and NID number are required for riders.',
+    path: ['vehicleType', 'vehicleNumber', 'licenseNumber', 'nidNumber'],
   }),
 });
 

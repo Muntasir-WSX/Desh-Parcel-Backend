@@ -7,7 +7,7 @@ import { uploadProfileImage } from '../../middlewares/profileUpload';
 
 const router = Router();
 
-router.get('/me', auth('CUSTOMER', 'RIDER', 'ADMIN', 'MODERATOR'), UserControllers.getMyProfile);
+router.get('/me', auth('CUSTOMER', 'RIDER', 'ADMIN', 'MODERATOR'),  UserControllers.getMyProfile);
 router.patch('/me', auth('CUSTOMER', 'RIDER', 'ADMIN', 'MODERATOR'), uploadProfileImage, validateRequest(UserValidation.updateProfileSchema), UserControllers.updateMyProfile);
 router.post('/forgot-password', validateRequest(UserValidation.forgotPasswordSchema), UserControllers.handleForgotPassword);
 router.post('/reset-password', validateRequest(UserValidation.resetPasswordSchema), UserControllers.handleResetPassword);

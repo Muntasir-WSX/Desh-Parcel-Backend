@@ -24,6 +24,7 @@ const getUserProfileFromDB = async (userId: string) => {
       email: true,
       phone: true,
       role: true,
+      profileImage: true,
       isVerified: true,
       createdAt: true,
       riderProfile: true,
@@ -36,7 +37,7 @@ const getUserProfileFromDB = async (userId: string) => {
 
 const updateMyProfileIntoDB = async (
   userId: string,
-  payload: { name?: string; phone?: string; email?: string }
+  payload: { name?: string; phone?: string; email?: string; profileImage?: string }
 ) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error('User not found!');
@@ -51,12 +52,14 @@ const updateMyProfileIntoDB = async (
       name: payload.name,
       phone: payload.phone,
       email: payload.email?.toLowerCase(),
+      ...(payload.profileImage && { profileImage: payload.profileImage }),
     },
     select: {
       id: true,
       name: true,
       email: true,
       phone: true,
+      profileImage: true,
       role: true,
       isVerified: true,
       createdAt: true,
@@ -126,10 +129,6 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
 
   return { message: 'Password reset successfully!' };
 };
-
-
-
-
 
 const getUserParcelsFromDB = async (customerId: string) => {
   const parcels = await prisma.parcel.findMany({

@@ -106,7 +106,7 @@ const registerUserIntoDB = async (payload: RegisterPayload) => {
     userName: result.name,
     subject: 'Welcome to DeshParcel! Account Created',
     title: 'Account Successfully Registered',
-    message: 'Your DeshParcel account has been created successfully. Please login to your dashboard to start sending or tracking parcels across 64 districts.',
+    message: 'Your DeshParcel account has been created successfully. Please login to your dashboard...',
     actionText: 'Login to Dashboard',
     actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
   }).catch((error) => console.error('Welcome email could not be sent:', error));

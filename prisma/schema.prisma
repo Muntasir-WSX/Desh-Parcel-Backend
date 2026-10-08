@@ -50,6 +50,8 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  profileImage  String?
+
   riderProfile  RiderProfile?
   sentParcels   Parcel[]       @relation("CustomerParcels")
   assignedParcels Parcel[]     @relation("RiderParcels")
