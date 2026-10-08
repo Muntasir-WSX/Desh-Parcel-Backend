@@ -9,6 +9,7 @@ const router = Router();
 
 router.patch('/users/:id/role', auth('ADMIN'), validateRequest(AdminValidation.roleSchema), AdminControllers.updateUserRole);
 router.patch('/users/:id/ban', auth('ADMIN'), validateRequest(AdminValidation.idParams), AdminControllers.banUser);
+router.patch('/users/:id/unban', auth('ADMIN'), validateRequest(AdminValidation.idParams), AdminControllers.unbanUser);
 router.patch('/riders/:id/approve', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.idParams), AdminControllers.approveRider);
 router.patch('/parcels/:id/approve', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.idParams), AdminControllers.approveParcel);
 router.patch('/parcels/:id/hub-status', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.hubStatusSchema), AdminControllers.updateParcelHubStatus);

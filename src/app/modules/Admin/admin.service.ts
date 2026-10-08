@@ -23,8 +23,12 @@ const updateUserRoleIntoDB = async (userId: string, role: Role, actorRole: strin
     throw new Error('The protected admin account cannot be changed.');
   }
 
-  if (role === Role.MODERATOR && user.role !== Role.CUSTOMER) {
-    throw new Error('Only customer accounts can be promoted to moderator.');
+  const isValidCustomerModeratorChange =
+    (user.role === Role.CUSTOMER && role === Role.MODERATOR) ||
+    (user.role === Role.MODERATOR && role === Role.CUSTOMER);
+
+  if (!isValidCustomerModeratorChange) {
+    throw new Error('Only customer and moderator accounts can switch between these two roles.');
   }
 
   const updatedUser = await prisma.user.update({
@@ -157,6 +161,21 @@ const banUserIntoDB = async (userId: string) => {
   });
 };
 
+const unbanUserIntoDB = async (userId: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error('User not found!');
+
+  if (user.role === Role.ADMIN || user.email.toLowerCase() === PROTECTED_ADMIN_EMAIL) {
+    throw new Error('The protected admin account cannot be unbanned.');
+  }
+
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { isBanned: false },
+    select: { id: true, name: true, email: true, role: true, isBanned: true },
+  });
+};
+
 
 const getAdminDashboardStatsFromDB = async () => {
   const totalUsers = await prisma.user.count();
@@ -189,9 +208,21 @@ const getAllUsersFromDB = async (page: number, limit: number) => {
   const users = await prisma.user.findMany({
     skip,
     take: limit,
-    select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true },
+    where: { role: { in: [Role.CUSTOMER, Role.MODERATOR, Role.RIDER] } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      isBanned: true,
+      createdAt: true,
+      riderProfile: { select: { isApproved: true } },
+    },
   });
-  const total = await prisma.user.count();
+  const total = await prisma.user.count({
+    where: { role: { in: [Role.CUSTOMER, Role.MODERATOR, Role.RIDER] } },
+  });
   return {
     meta: { page, limit, total },
     result: users,
@@ -366,6 +397,7 @@ export const AdminServices = {
   approveParcelIntoDB,
   approveRiderIntoDB,
   banUserIntoDB,
+  unbanUserIntoDB,
   assignParcelToRiderIntoDB,
   getAdminDashboardStatsFromDB,
   getAllUsersFromDB,

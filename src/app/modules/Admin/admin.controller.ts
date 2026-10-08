@@ -71,6 +71,17 @@ const banUser = async (req: AuthenticatedRequest, res: Response): Promise<void> 
   }
 };
 
+const unbanUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.unbanUserIntoDB(userId as string);
+    void createAuditLog({ ...auditRequest(req), action: 'USER_UNBANNED', resource: 'USER', resourceId: userId as string }).catch(console.error);
+    res.status(200).json({ success: true, message: 'User unbanned successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
   const updateParcelHubStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const parcelId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -180,6 +191,7 @@ export const AdminControllers = {
   approveParcel,
   approveRider,
   banUser,
+  unbanUser,
     updateParcelHubStatus,
   getDashboardStats,
   getAllUsers,

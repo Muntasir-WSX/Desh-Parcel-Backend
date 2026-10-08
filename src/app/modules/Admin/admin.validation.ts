@@ -3,7 +3,7 @@ import { z } from 'zod';
 const idParams = z.object({ params: z.object({ id: z.string().uuid('A valid ID is required.') }) });
 
 const roleSchema = idParams.extend({
-  body: z.object({ role: z.enum(['CUSTOMER', 'MODERATOR', 'RIDER']) }),
+  body: z.object({ role: z.enum(['CUSTOMER', 'MODERATOR']) }),
 });
 
 const assignSchema = z.object({
