@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npx prisma generate",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "npx prisma generate --schema=prisma/schema.prisma",
   "builds": [
     {
       "src": "api/index.ts",
