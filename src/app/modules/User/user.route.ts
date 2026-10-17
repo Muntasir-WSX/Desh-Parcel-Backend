@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { UserControllers } from './user.controller';
+import { UserControllers, UserControllers } from './user.controller';
 import auth from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { UserValidation } from './user.validation';
@@ -14,4 +14,5 @@ router.post('/reset-password', validateRequest(UserValidation.resetPasswordSchem
 router.get('/my-parcels', auth('CUSTOMER'), UserControllers.getMyParcels);
 router.get('/my-payments', auth('CUSTOMER'), UserControllers.getMyPayments);
 router.post('/my-reviews', auth('CUSTOMER'), validateRequest(UserValidation.createReviewSchema), UserControllers.addParcelReview);
+
 export const UserRoutes = router;
