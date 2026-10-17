@@ -11,6 +11,21 @@ const getReviews = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const subscribeNewsletter = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PublicServices.subscribeNewsletterIntoDB(req.body.email);
+    res.status(201).json({ 
+      success: true, 
+      message: 'Subscribed to newsletter successfully', 
+      data: result 
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+
 export const PublicControllers = {
   getReviews,
+    subscribeNewsletter,
 };
