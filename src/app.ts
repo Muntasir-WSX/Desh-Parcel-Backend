@@ -9,6 +9,7 @@ import { ParcelRoutes } from './app/modules/Percel/percel.route';
 import { AdminRoutes } from './app/modules/Admin/admin.route';
 import { RiderRoutes } from './app/modules/Rider/rider.route';
 import { PaymentRoutes } from './app/modules/payments/payment.route';
+import { publicRoutes } from './app/modules/Public/public.route';
 
 const app: Application = express();
 

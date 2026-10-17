@@ -1,4 +1,6 @@
-import sendResponse from "../../utils/sendResponse";
+import { Request, Response } from 'express';
+import { PublicServices } from './public.service';
+import sendResponse from '../../utils/sendResponse';
 
 const getReviews = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -7,4 +9,8 @@ const getReviews = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
+};
+
+export const PublicControllers = {
+  getReviews,
 };

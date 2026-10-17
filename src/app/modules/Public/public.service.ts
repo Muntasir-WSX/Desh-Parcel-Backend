@@ -1,3 +1,7 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
 const getAllReviewsFromDB = async () => {
   return await prisma.review.findMany({
     include: {
@@ -5,4 +9,8 @@ const getAllReviewsFromDB = async () => {
     },
     orderBy: { createdAt: 'desc' },
   });
+};
+
+export const PublicServices = {
+  getAllReviewsFromDB,
 };
