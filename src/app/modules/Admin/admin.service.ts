@@ -16,6 +16,7 @@ const updateUserRoleIntoDB = async (userId: string, role: Role, actorRole: strin
     throw new Error('Another admin account cannot be created.');
   }
 
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error('User not found!');
 
@@ -392,6 +393,62 @@ const getAuditLogsFromDB = async (query: {
   return { meta: { page, limit, total }, data: logs };
 };
 
+
+// --- Blog Services ---
+const createBlogIntoDB = async (adminId: string, payload: { title: string; content: string; image?: string }) => {
+  const slug = payload.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+
+  return await prisma.blog.create({
+    data: {
+      title: payload.title,
+      slug,
+      content: payload.content,
+      image: payload.image,
+      authorId: adminId,
+    },
+  });
+};
+
+const updateBlogIntoDB = async (blogId: string, payload: { title?: string; content?: string; image?: string }) => {
+  const blog = await prisma.blog.findUnique({ where: { id: blogId } });
+  if (!blog) throw new Error('Blog not found!');
+
+  let slug = blog.slug;
+  if (payload.title) {
+    slug = payload.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+  }
+
+  return await prisma.blog.update({
+    where: { id: blogId },
+    data: {
+      ...payload,
+      slug,
+    },
+  });
+};
+
+const deleteBlogFromDB = async (blogId: string) => {
+  const blog = await prisma.blog.findUnique({ where: { id: blogId } });
+  if (!blog) throw new Error('Blog not found!');
+
+  return await prisma.blog.delete({ where: { id: blogId } });
+};
+
+// --- Newsletter Service ---
+const getAllNewsletterSubscribersFromDB = async () => {
+  return await prisma.newsletter.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+
+
 export const AdminServices = {
   updateUserRoleIntoDB,
   approveParcelIntoDB,
@@ -406,6 +463,10 @@ export const AdminServices = {
   updateParcelHubStatusIntoDB,
   getAllWithdrawalRequestsFromDB,
   updateWithdrawalStatusByAdminFromDB,
+  createBlogIntoDB,
+  updateBlogIntoDB, 
+  deleteBlogFromDB,
+  getAllNewsletterSubscribersFromDB,
   getAuditLogsFromDB,
 };
 

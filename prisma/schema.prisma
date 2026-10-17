@@ -56,6 +56,8 @@ model User {
   sentParcels   Parcel[]       @relation("CustomerParcels")
   assignedParcels Parcel[]     @relation("RiderParcels")
   otps          Otp[]
+  reviews       Review[]
+  blogs         Blog[]
   withdrawalRequests  WithdrawalRequest[]  @relation("RiderWithdrawals")
   auditLogsAsActor AuditLog[] @relation("AuditActor")
 }
@@ -111,6 +113,7 @@ model Parcel {
 
   payment         Payment?
   trackingLogs    TrackingLog[]
+  review          Review?
 }
 
 model Payment {
@@ -137,7 +140,38 @@ enum PaymentStatus {
   CANCELLED
 }
 
+// Review / Testimonial Model
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int      // e.g., 1 to 5 stars
+  comment   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parcelId  String   @unique // একটি পার্সেলের জন্য একটিই রিভিউ দেওয়া যাবে
+  parcel    Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
+// Blog Model (Admin CRUD)
+model Blog {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String
+  image       String?  // Blog banner image
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Newsletter Model
+model Newsletter {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
 
 model Otp {
   id        String   @id @default(uuid())

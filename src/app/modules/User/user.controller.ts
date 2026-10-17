@@ -74,6 +74,16 @@ const handleResetPassword = async (req: AuthenticatedRequest, res: Response): Pr
   }
 };
 
+const addParcelReview = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const result = await UserServices.createParcelReviewIntoDB(userId!, req.body);
+    res.status(201).json({ success: true, message: 'Review submitted successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
 export const UserControllers = {
   getMyProfile,
   updateMyProfile,
@@ -81,4 +91,5 @@ export const UserControllers = {
   handleResetPassword,
   getMyParcels,
   getMyPayments,
+  addParcelReview,
 };

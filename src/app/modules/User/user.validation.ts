@@ -24,8 +24,17 @@ const resetPasswordSchema = z.object({
   }),
 });
 
+const createReviewSchema = z.object({
+  body: z.object({
+    parcelId: z.string().uuid('Invalid parcel ID format.'),
+    rating: z.number().int().min(1, 'Rating must be at least 1 star.').max(5, 'Rating cannot exceed 5 stars.'),
+    comment: z.string().trim().min(2, 'Comment must be at least 2 characters long.'),
+  }),
+});
+
 export const UserValidation = {
   updateProfileSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  createReviewSchema,
 };

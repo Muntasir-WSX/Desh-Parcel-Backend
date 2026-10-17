@@ -21,4 +21,11 @@ router.delete('/parcels/:id', auth('ADMIN', 'MODERATOR'), validateRequest(AdminV
 router.get('/withdrawal-requests', auth('ADMIN'), AdminControllers.getWithdrawalRequests);
 router.patch('/withdrawal-requests/:id/status', auth('ADMIN'), validateRequest(AdminValidation.withdrawalStatusSchema), AdminControllers.handleWithdrawalStatus);
 router.get('/audit-logs', auth('ADMIN'), validateRequest(AdminValidation.auditLogQuerySchema), AdminControllers.getAuditLogs);
+router.post('/blogs', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.createBlogSchema), AdminControllers.createBlog);
+router.patch('/blogs/:id', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.updateBlogSchema), AdminControllers.updateBlog);
+router.delete('/blogs/:id', auth('ADMIN', 'MODERATOR'), validateRequest(AdminValidation.idParams), AdminControllers.deleteBlog);
+
+// Newsletter Subscribers List Route (Admin only)
+router.get('/newsletters', auth('ADMIN'), AdminControllers.getNewsletters);
+
 export const AdminRoutes = router;

@@ -39,6 +39,26 @@ const auditLogQuerySchema = z.object({
   }),
 });
 
+
+
+const createBlogSchema = z.object({
+  body: z.object({
+    title: z.string().trim().min(3, 'Blog title is required and must be at least 3 characters.'),
+    content: z.string().trim().min(10, 'Blog content is required.'),
+    image: z.string().url('Invalid image URL format.').optional(),
+  }),
+});
+
+const updateBlogSchema = z.object({
+  params: z.object({ id: z.string().uuid('A valid Blog ID is required.') }),
+  body: z.object({
+    title: z.string().trim().min(3).optional(),
+    content: z.string().trim().min(10).optional(),
+    image: z.string().url().optional(),
+  }),
+});
+
+// AdminValidation object-e export korun:
 export const AdminValidation = {
   idParams,
   roleSchema,
@@ -48,4 +68,6 @@ export const AdminValidation = {
   withdrawalStatusSchema,
   paginationSchema,
   auditLogQuerySchema,
+  createBlogSchema,
+  updateBlogSchema,
 };

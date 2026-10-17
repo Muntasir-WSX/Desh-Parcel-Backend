@@ -13,4 +13,5 @@ router.post('/forgot-password', validateRequest(UserValidation.forgotPasswordSch
 router.post('/reset-password', validateRequest(UserValidation.resetPasswordSchema), UserControllers.handleResetPassword);
 router.get('/my-parcels', auth('CUSTOMER'), UserControllers.getMyParcels);
 router.get('/my-payments', auth('CUSTOMER'), UserControllers.getMyPayments);
+router.post('/my-reviews', auth('CUSTOMER'), validateRequest(UserValidation.createReviewSchema), UserControllers.addParcelReview);
 export const UserRoutes = router;

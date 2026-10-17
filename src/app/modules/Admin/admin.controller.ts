@@ -185,6 +185,50 @@ const getAuditLogs = async (req: AuthenticatedRequest, res: Response): Promise<v
   }
 };
 
+// --- Blog Controllers ---
+const createBlog = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const adminId = req.user?.id;
+    const result = await AdminServices.createBlogIntoDB(adminId!, req.body);
+    void createAuditLog({ ...auditRequest(req), action: 'BLOG_CREATED', resource: 'BLOG', resourceId: result.id }).catch(console.error);
+    res.status(201).json({ success: true, message: 'Blog created successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+const updateBlog = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const blogId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.updateBlogIntoDB(blogId as string, req.body);
+    void createAuditLog({ ...auditRequest(req), action: 'BLOG_UPDATED', resource: 'BLOG', resourceId: blogId as string }).catch(console.error);
+    res.status(200).json({ success: true, message: 'Blog updated successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+const deleteBlog = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const blogId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await AdminServices.deleteBlogFromDB(blogId as string);
+    void createAuditLog({ ...auditRequest(req), action: 'BLOG_DELETED', resource: 'BLOG', resourceId: blogId as string }).catch(console.error);
+    res.status(200).json({ success: true, message: 'Blog deleted successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+// --- Newsletter Controller ---
+const getNewsletters = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await AdminServices.getAllNewsletterSubscribersFromDB();
+    res.status(200).json({ success: true, message: 'Newsletter subscribers fetched successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
 export const AdminControllers = {
   updateUserRole,
   assignParcelToRider,
@@ -200,4 +244,8 @@ export const AdminControllers = {
   getWithdrawalRequests,
   handleWithdrawalStatus,
   getAuditLogs,
+  createBlog,
+  updateBlog,
+  deleteBlog,
+  getNewsletters,
 };

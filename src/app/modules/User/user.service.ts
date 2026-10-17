@@ -159,6 +159,48 @@ const getUserPaymentHistoryFromDB = async (customerId: string) => {
 
 
 
+const createParcelReviewIntoDB = async (userId: string, payload: { parcelId: string; rating: number; comment: string }) => {
+  const { parcelId, rating, comment } = payload;
+
+  const parcel = await prisma.parcel.findUnique({
+    where: { id: parcelId },
+    include: { review: true },
+  });
+
+  if (!parcel) {
+    throw new Error('Parcel not found!');
+  }
+
+  if (parcel.senderId !== userId) {
+    throw new Error('You are not authorized to review this parcel.');
+  }
+
+  if (parcel.status !== 'DELIVERED') {
+    throw new Error('You can only review a parcel after it has been delivered.');
+  }
+
+  if (parcel.review) {
+    throw new Error('You have already submitted a review for this parcel.');
+  }
+
+
+  const review = await prisma.review.create({
+    data: {
+      rating,
+      comment,
+      userId,
+      parcelId,
+    },
+  });
+
+  return review;
+};
+
+
+
+
+
+
 export const UserServices = {
   getUserProfileFromDB,
   updateMyProfileIntoDB,
@@ -166,4 +208,5 @@ export const UserServices = {
   resetPassword,
    getUserParcelsFromDB,
   getUserPaymentHistoryFromDB,
+  createParcelReviewIntoDB,
 };
