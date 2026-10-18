@@ -395,7 +395,16 @@ const getAuditLogsFromDB = async (query: {
 
 
 // --- Blog Services ---
-const createBlogIntoDB = async (adminId: string, payload: { title: string; content: string; image?: string }) => {
+
+const createBlogIntoDB = async (
+  adminId: string,
+  payload: {
+    title: string;
+    content: string;
+    category: string;
+    image?: string;
+  }
+) => {
   const slug = payload.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -406,11 +415,13 @@ const createBlogIntoDB = async (adminId: string, payload: { title: string; conte
       title: payload.title,
       slug,
       content: payload.content,
+      category: payload.category,
       image: payload.image,
       authorId: adminId,
     },
   });
 };
+
 
 const updateBlogIntoDB = async (blogId: string, payload: { title?: string; content?: string; image?: string }) => {
   const blog = await prisma.blog.findUnique({ where: { id: blogId } });

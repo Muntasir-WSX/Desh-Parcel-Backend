@@ -35,18 +35,26 @@ const getAllBlogs = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+
 const getBlogById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await PublicServices.getBlogByIdFromDB(req.params.id);
+    const id = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const result = await PublicServices.getBlogByIdFromDB(id);
+
     if (!result) {
       sendResponse(res, { success: false, statusCode: 404, message: 'Blog not found' });
       return;
     }
+
     sendResponse(res, { success: true, statusCode: 200, message: 'Blog fetched successfully', data: result });
   } catch (error: any) {
     sendResponse(res, { success: false, statusCode: 400, message: error.message });
   }
 };
+
 
 
 export const PublicControllers = {

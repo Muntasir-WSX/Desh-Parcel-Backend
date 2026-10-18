@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm ci --include=dev",
-  "buildCommand": "npx prisma generate --schema=prisma/schema.prisma",
+  "buildCommand": "npx prisma generate --schema=prisma/schema.prisma && npm run build",
   "rewrites": [
     {
       "source": "/(.*)",
