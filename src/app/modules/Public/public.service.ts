@@ -24,7 +24,24 @@ const subscribeNewsletterIntoDB = async (email: string) => {
 };
 
 
+const getAllBlogsFromDB = async () => {
+  return await prisma.blog.findMany({
+    include: { author: { select: { name: true, profileImage: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+const getBlogByIdFromDB = async (blogId: string) => {
+  return await prisma.blog.findUnique({
+    where: { id: blogId },
+    include: { author: { select: { name: true, profileImage: true } } },
+  });
+};
+
+
 export const PublicServices = {
   subscribeNewsletterIntoDB,
   getAllReviewsFromDB,
+  getAllBlogsFromDB,
+  getBlogByIdFromDB,
 };

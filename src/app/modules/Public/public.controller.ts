@@ -25,7 +25,33 @@ const subscribeNewsletter = async (req: Request, res: Response): Promise<void> =
 };
 
 
+
+const getAllBlogs = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PublicServices.getAllBlogsFromDB();
+    sendResponse(res, { success: true, statusCode: 200, message: 'Blogs fetched successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+const getBlogById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PublicServices.getBlogByIdFromDB(req.params.id);
+    if (!result) {
+      sendResponse(res, { success: false, statusCode: 404, message: 'Blog not found' });
+      return;
+    }
+    sendResponse(res, { success: true, statusCode: 200, message: 'Blog fetched successfully', data: result });
+  } catch (error: any) {
+    sendResponse(res, { success: false, statusCode: 400, message: error.message });
+  }
+};
+
+
 export const PublicControllers = {
   getReviews,
     subscribeNewsletter,
+    getAllBlogs,
+    getBlogById,
 };
