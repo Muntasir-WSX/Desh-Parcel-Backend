@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-
 const bdPhoneRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/;
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
 
@@ -24,14 +23,38 @@ const registerSchema = z.object({
     vehicleNumber: z.string().trim().optional(),
     licenseNumber: z.string().trim().optional(),
     nidNumber: z.string().trim().optional(),
-  }).refine((data) => {
+  }).superRefine((data, ctx) => {
+    
     if (data.role === 'RIDER') {
-      return data.vehicleType && data.vehicleNumber && data.licenseNumber && data.nidNumber;
+      if (!data.vehicleType || data.vehicleType === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Vehicle type is required for riders.',
+          path: ['vehicleType'],
+        });
+      }
+      if (!data.vehicleNumber || data.vehicleNumber === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Vehicle number is required for riders.',
+          path: ['vehicleNumber'],
+        });
+      }
+      if (!data.licenseNumber || data.licenseNumber === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'License number is required for riders.',
+          path: ['licenseNumber'],
+        });
+      }
+      if (!data.nidNumber || data.nidNumber === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'NID number is required for riders.',
+          path: ['nidNumber'],
+        });
+      }
     }
-    return true;
-  }, {
-    message: 'Vehicle type, vehicle number, license number, and NID number are required for riders.',
-    path: ['vehicleType', 'vehicleNumber', 'licenseNumber', 'nidNumber'],
   }),
 });
 
